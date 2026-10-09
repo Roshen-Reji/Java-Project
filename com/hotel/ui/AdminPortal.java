@@ -24,13 +24,13 @@ public class AdminPortal {
             return;
         }
 
-        Admin admin = new Admin(999, "Admin Master", "admin@hotel.com", "999-9999");
+        Admin admin = new Admin(999, "Admin ", "admin@hotel.com", "999-9999");
         System.out.println("\nWelcome, Administrator!");
         admin.displayDetails();
 
         boolean back = false;
         while (!back) {
-            System.out.println("\n=== Powerful Administrator Portal ===");
+            System.out.println("\n Administrator Portal ");
             System.out.println("1.  View all rooms");
             System.out.println("2.  Add a new room");
             System.out.println("3.  Update an existing room");
