@@ -1,11 +1,9 @@
 package com.hotel.ui;
 
 import com.hotel.domain.Customer;
-import com.hotel.domain.Payment;
 import com.hotel.domain.Reservation;
 import com.hotel.domain.Room;
 import com.hotel.service.AuthenticationCustomerService;
-import com.hotel.service.PaymentService;
 import com.hotel.service.ReservationService;
 import com.hotel.service.RoomManagementService;
 import java.util.List;
