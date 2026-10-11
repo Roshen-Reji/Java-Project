@@ -18,19 +18,23 @@ public class AdminPortal {
 
     public static void start(Scanner sc) {
         System.out.print("Enter Admin PIN (default: 1234): ");
+        if (!sc.hasNextLine()) {
+            return;
+        }
         String pin = sc.nextLine().trim();
         if (!pin.equals("1234") && !pin.equalsIgnoreCase("admin")) {
             System.out.println("Invalid PIN. Access denied.");
             return;
         }
 
-        Admin admin = new Admin(999, "Admin ", "admin@hotel.com", "999-9999");
+        HotelStaff existingAdmin = StaffService.findStaff(999);
+        Admin admin = (existingAdmin instanceof Admin) ? (Admin) existingAdmin : new Admin(999, "Master Admin", "admin@hotel.com", "999-9999");
         System.out.println("\nWelcome, Administrator!");
         admin.displayDetails();
 
         boolean back = false;
         while (!back) {
-            System.out.println("\n Administrator Portal ");
+            System.out.println("\n--- Administrator Portal ---");
             System.out.println("1.  View all rooms");
             System.out.println("2.  Add a new room");
             System.out.println("3.  Update an existing room");
@@ -127,8 +131,10 @@ public class AdminPortal {
         double price = readDoublePrompt(sc, "Enter Nightly Price: ");
         System.out.print("Enter Description: ");
         String desc = sc.nextLine().trim();
-        admin.createRoom(roomNo, roomType, price, "Available", desc);
-        System.out.println("Room " + roomNo + " (" + roomType + ") added successfully!");
+        boolean created = admin.createRoom(roomNo, roomType, price, "Available", desc);
+        if (created) {
+            System.out.println("Room " + roomNo + " (" + roomType + ") added successfully!");
+        }
     }
 
     private static void handleUpdateRoom(Scanner sc) {
@@ -185,8 +191,10 @@ public class AdminPortal {
         String email = sc.nextLine().trim();
         System.out.print("Enter Phone: ");
         String phone = sc.nextLine().trim();
-        admin.createStaff(staffId, name, role, email, phone);
-        System.out.println("Staff " + name + " (" + role + ") registered successfully!");
+        boolean created = admin.createStaff(staffId, name, role, email, phone);
+        if (created) {
+            System.out.println("Staff " + name + " (" + role + ") registered successfully!");
+        }
     }
 
     private static void handleDeleteStaff(Scanner sc, Admin admin) {
@@ -261,6 +269,15 @@ public class AdminPortal {
         if (resId == 0) {
             return;
         }
+        Reservation r = ReservationService.getReservationById(resId);
+        if (r == null) {
+            System.out.println("Error: Reservation #" + resId + " not found.");
+            return;
+        }
+        if (!"Pending Approval".equalsIgnoreCase(r.getStatus()) && !"Pending".equalsIgnoreCase(r.getStatus())) {
+            System.out.println("Error: Reservation #" + resId + " is not pending approval.");
+            return;
+        }
         System.out.println("1. Confirm Payment & Reserve Room");
         System.out.println("2. Reject Payment & Cancel Reservation");
         System.out.println("0. Back");
@@ -298,6 +315,9 @@ public class AdminPortal {
     private static int readIntChoice(Scanner sc) {
         while (true) {
             System.out.print("> ");
+            if (!sc.hasNextLine()) {
+                return 15;
+            }
             String line = sc.nextLine().trim();
             try {
                 return Integer.parseInt(line);
@@ -310,6 +330,9 @@ public class AdminPortal {
     private static int readIntPrompt(Scanner sc, String prompt) {
         while (true) {
             System.out.print(prompt);
+            if (!sc.hasNextLine()) {
+                return 0;
+            }
             String line = sc.nextLine().trim();
             try {
                 return Integer.parseInt(line);
@@ -322,9 +345,17 @@ public class AdminPortal {
     private static double readDoublePrompt(Scanner sc, String prompt) {
         while (true) {
             System.out.print(prompt);
+            if (!sc.hasNextLine()) {
+                return 0.0;
+            }
             String line = sc.nextLine().trim();
             try {
-                return Double.parseDouble(line);
+                double val = Double.parseDouble(line);
+                if (val <= 0) {
+                    System.out.println("Amount must be greater than zero. Please try again.");
+                    continue;
+                }
+                return val;
             } catch (Exception e) {
                 System.out.println("Invalid amount. Please try again.");
             }
@@ -333,12 +364,20 @@ public class AdminPortal {
 
     private static double readDoubleOrKeep(Scanner sc, String prompt, double current) {
         System.out.print(prompt);
+        if (!sc.hasNextLine()) {
+            return current;
+        }
         String line = sc.nextLine().trim();
         if (line.isEmpty()) {
             return current;
         }
         try {
-            return Double.parseDouble(line);
+            double val = Double.parseDouble(line);
+            if (val <= 0) {
+                System.out.println("Amount must be greater than zero. Keeping current value.");
+                return current;
+            }
+            return val;
         } catch (Exception e) {
             System.out.println("Invalid amount. Keeping current value.");
             return current;

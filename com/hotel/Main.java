@@ -60,6 +60,9 @@ public class Main {
     private static int readIntChoice(Scanner sc) {
         while (true) {
             System.out.print("> ");
+            if (!sc.hasNextLine()) {
+                return 4;
+            }
             String line = sc.nextLine().trim();
             try {
                 return Integer.parseInt(line);

@@ -135,6 +135,10 @@ public class StaffPortal {
             System.out.println("Error: Reservation #" + resId + " not found.");
             return;
         }
+        if (!"Pending Approval".equalsIgnoreCase(r.getStatus()) && !"Pending".equalsIgnoreCase(r.getStatus())) {
+            System.out.println("Error: Reservation #" + resId + " is not pending approval.");
+            return;
+        }
         System.out.println("1. Confirm Payment & Reserve Room");
         System.out.println("2. Reject Payment & Cancel Reservation");
         System.out.println("0. Back");
@@ -186,6 +190,9 @@ public class StaffPortal {
     private static int readIntChoice(Scanner sc) {
         while (true) {
             System.out.print("> ");
+            if (!sc.hasNextLine()) {
+                return 8;
+            }
             String line = sc.nextLine().trim();
             try {
                 return Integer.parseInt(line);
@@ -198,6 +205,9 @@ public class StaffPortal {
     private static int readIntPrompt(Scanner sc, String prompt) {
         while (true) {
             System.out.print(prompt);
+            if (!sc.hasNextLine()) {
+                return 0;
+            }
             String line = sc.nextLine().trim();
             try {
                 return Integer.parseInt(line);
@@ -209,12 +219,20 @@ public class StaffPortal {
 
     private static double readDoubleOrKeep(Scanner sc, String prompt, double current) {
         System.out.print(prompt);
+        if (!sc.hasNextLine()) {
+            return current;
+        }
         String line = sc.nextLine().trim();
         if (line.isEmpty()) {
             return current;
         }
         try {
-            return Double.parseDouble(line);
+            double val = Double.parseDouble(line);
+            if (val <= 0) {
+                System.out.println("Amount must be greater than zero. Keeping current value.");
+                return current;
+            }
+            return val;
         } catch (Exception e) {
             System.out.println("Invalid amount. Keeping current value.");
             return current;

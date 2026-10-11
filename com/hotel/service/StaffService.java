@@ -15,6 +15,10 @@ public class StaffService {
         if (staff == null) {
             return null;
         }
+        if (staff.getStaffId() <= 0) {
+            System.out.println("Error: Staff ID must be greater than zero.");
+            return null;
+        }
         if (staffRepository.getById(staff.getStaffId()) != null) {
             System.out.println("Error: Staff ID " + staff.getStaffId() + " already exists.");
             return null;
@@ -24,6 +28,10 @@ public class StaffService {
     }
 
     public static boolean deleteStaff(int staffId) {
+        if (staffId == 999) {
+            System.out.println("Error: Cannot delete Master Admin (ID 999).");
+            return false;
+        }
         if (staffRepository.getById(staffId) == null) {
             System.out.println("Error: Staff ID " + staffId + " not found.");
             return false;

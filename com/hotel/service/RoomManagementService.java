@@ -1,6 +1,7 @@
 package com.hotel.service;
 
 import com.hotel.domain.DeluxeRoom;
+import com.hotel.domain.Reservation;
 import com.hotel.domain.Room;
 import com.hotel.domain.StandardRoom;
 import com.hotel.domain.SuiteRoom;
@@ -15,6 +16,14 @@ public class RoomManagementService {
     }
 
     public static Room addRoom(int roomNo, String roomType, double price, String status, String description) {
+        if (roomNo <= 0) {
+            System.out.println("Error: Room number must be greater than zero.");
+            return null;
+        }
+        if (price <= 0) {
+            System.out.println("Error: Nightly price must be greater than zero.");
+            return null;
+        }
         if (roomRepository.getById(roomNo) != null) {
             System.out.println("Error: Room " + roomNo + " already exists.");
             return null;
@@ -35,6 +44,13 @@ public class RoomManagementService {
         if (roomRepository.getById(roomNo) == null) {
             System.out.println("Error: Room " + roomNo + " not found.");
             return false;
+        }
+        List<Reservation> resList = ReservationService.getReservationRepository().findByRoomNo(roomNo);
+        for (Reservation r : resList) {
+            if ("Confirmed".equalsIgnoreCase(r.getStatus()) || "Pending Approval".equalsIgnoreCase(r.getStatus()) || "Pending".equalsIgnoreCase(r.getStatus())) {
+                System.out.println("Error: Cannot delete Room " + roomNo + " because it has an active/pending reservation (#" + r.getReservationId() + ").");
+                return false;
+            }
         }
         roomRepository.delete(roomNo);
         System.out.println("Room " + roomNo + " deleted successfully.");
