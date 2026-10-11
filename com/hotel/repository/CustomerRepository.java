@@ -50,12 +50,19 @@ public class CustomerRepository {
             return null;
         }
         String target = normalizePhone(phone);
-        if (target.isEmpty()) {
+        String targetDigits = phone.replaceAll("[^0-9]", "");
+        if (target.isEmpty() && targetDigits.isEmpty()) {
             return null;
         }
         for (Customer c : store.values()) {
-            if (c.getPhone() != null && target.equals(normalizePhone(c.getPhone()))) {
-                return c;
+            if (c.getPhone() != null) {
+                String stored = normalizePhone(c.getPhone());
+                String storedDigits = c.getPhone().replaceAll("[^0-9]", "");
+                if (target.equals(stored) || targetDigits.equals(storedDigits)
+                        || (storedDigits.length() >= 7 && targetDigits.length() >= 7
+                        && (storedDigits.endsWith(targetDigits) || targetDigits.endsWith(storedDigits)))) {
+                    return c;
+                }
             }
         }
         return null;

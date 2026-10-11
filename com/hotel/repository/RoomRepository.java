@@ -8,7 +8,6 @@ import java.util.Map;
 
 public class RoomRepository {
     private Map<Integer, Room> store = new HashMap<>();
-    private int nextId = 1;
 
     public int add(Room r) {
         store.put(r.getRoomNo(), r);

@@ -1,0 +1,440 @@
+================================================================================
+           CORE JAVA OOP CONCEPTS IN THE HOTEL RESERVATION SYSTEM
+                CONCEPTS, PRACTICAL EXAMPLES & CODE REFERENCES
+================================================================================
+
+PROJECT CONTEXT:
+This document explains the four fundamental Object-Oriented Programming (OOP)
+pillars—INHERITANCE, POLYMORPHISM, ENCAPSULATION, and ABSTRACTION—as implemented
+in this Hotel Reservation System project, complete with concrete code snippets,
+file references, design rationale, and sample viva/interview questions.
+
+================================================================================
+                              1. INHERITANCE
+================================================================================
+DEFINITION:
+Inheritance is the mechanism in Java where one class (subclass/child class)
+acquires the properties (fields) and behaviors (methods) of another class
+(superclass/parent class) using the `extends` keyword. It promotes CODE REUSE
+and establishes an "IS-A" relationship.
+
+HOW INHERITANCE IS USED IN THIS PROJECT:
+The project implements three distinct forms of inheritance:
+
+--------------------------------------------------------------------------------
+A. Multilevel Inheritance (Person -> HotelStaff -> Admin)
+--------------------------------------------------------------------------------
+- Concept: A class extends another class which itself extends a base class.
+- Structure:
+    Person (Grandparent)
+      ^
+      | extends
+    HotelStaff (Parent)
+      ^
+      | extends
+    Admin (Child)
+
+- File Examples:
+  1) `com/hotel/domain/Person.java`:
+     Base class declaring common human attributes:
+     ```java
+     public class Person {
+         protected int id;
+         protected String name;
+         protected String phone;
+         protected String email;
+
+         public Person(int id, String name, String phone, String email) {
+             this.id = id;
+             this.name = name;
+             this.phone = phone;
+             this.email = email;
+         }
+         public void displayDetails() {
+             System.out.println("ID: " + id + " | Name: " + name + ...);
+         }
+     }
+     ```
+
+  2) `com/hotel/domain/HotelStaff.java`:
+     Extends `Person`, reusing `id`, `name`, `phone`, `email`, and adding `role`:
+     ```java
+     public class HotelStaff extends Person {
+         protected String role;
+
+         public HotelStaff(int staffId, String name, String role, String email, String phone) {
+             super(staffId, name, phone, email); // Constructor Chaining
+             this.role = role;
+         }
+     }
+     ```
+
+  3) `com/hotel/domain/Admin.java`:
+     Extends `HotelStaff`, automatically inheriting everything from both `HotelStaff`
+     and `Person`, and adding administrator capabilities:
+     ```java
+     public class Admin extends HotelStaff {
+         public Admin(int id, String name, String email, String phone) {
+             super(id, name, "Admin", email, phone); // Calls HotelStaff constructor
+         }
+         public boolean createRoom(...) { ... }
+         public boolean deleteRoom(...) { ... }
+     }
+     ```
+
+- Real-world Rationale: An Administrator IS-A Staff member, and a Staff member IS-A Person.
+
+--------------------------------------------------------------------------------
+B. Single Inheritance (Person -> Customer)
+--------------------------------------------------------------------------------
+- Concept: One subclass directly extends one superclass.
+- File Example:
+  `com/hotel/domain/Customer.java`:
+  ```java
+  public class Customer extends Person {
+      private String address;
+
+      public Customer(int customerId, String name, String phone, String email, String address) {
+          super(customerId, name, phone, email); // Reuses Person's constructor
+          this.address = address;
+      }
+  }
+  ```
+- Code Benefit: Customer avoids duplicating `id`, `name`, `phone`, `email` logic.
+
+--------------------------------------------------------------------------------
+C. Hierarchical Inheritance (One Parent, Multiple Siblings)
+--------------------------------------------------------------------------------
+1) Room Hierarchy:
+   - Base Class: `com/hotel/domain/Room.java`
+   - Child Classes:
+     * `StandardRoom.java` -> `public class StandardRoom extends Room`
+     * `DeluxeRoom.java`   -> `public class DeluxeRoom extends Room`
+     * `SuiteRoom.java`    -> `public class SuiteRoom extends Room`
+
+   Example from `com/hotel/domain/DeluxeRoom.java`:
+   ```java
+   public class DeluxeRoom extends Room {
+       public DeluxeRoom(int roomNo, double price, String status, String description) {
+           super(roomNo, "Deluxe", price, status, description);
+       }
+   }
+   ```
+
+2) Payment Hierarchy:
+   - Base Class: `com/hotel/domain/Payment.java`
+   - Child Classes:
+     * `UpiPayment.java`  -> `public class UpiPayment extends Payment`
+     * `CardPayment.java` -> `public class CardPayment extends Payment`
+     * `CashPayment.java` -> `public class CashPayment extends Payment`
+
+--------------------------------------------------------------------------------
+D. Constructor Chaining (`super(...)` keyword)
+--------------------------------------------------------------------------------
+- Whenever a subclass constructor is executed, it first delegates initialization
+  to its superclass constructor via `super(...)`.
+- Example: When `new Admin(...)` is called, it calls `super(...)` in `HotelStaff`,
+  which in turn calls `super(...)` in `Person`. All ancestor fields are guaranteed
+  to be initialized before subclass fields.
+
+
+================================================================================
+                             2. POLYMORPHISM
+================================================================================
+DEFINITION:
+Polymorphism literally means "many forms". It allows a single method or interface
+to exhibit different behaviors based on the actual object invoking it at runtime.
+
+HOW POLYMORPHISM IS USED IN THIS PROJECT:
+
+--------------------------------------------------------------------------------
+A. Runtime Polymorphism / Dynamic Method Dispatch (Method Overriding)
+--------------------------------------------------------------------------------
+- Definition: A subclass provides its own specific implementation of a method
+  already defined in its superclass, using identical method signature and `@Override`.
+  The JVM decides which method to run dynamically at runtime.
+
+- Example 1: Bill Generation (`Payment` hierarchy)
+  1) In `com/hotel/domain/Payment.java` (Base Implementation):
+     ```java
+     public void generateBill() {
+         System.out.println("--- Bill ---");
+         System.out.println("Reservation ID : " + reservation.getReservationId());
+         System.out.println("Total amount   : $" + reservation.getTotalAmount());
+         System.out.println("Payment method : " + paymentMethod);
+         System.out.println("Payment status : " + paymentStatus);
+     }
+     ```
+
+  2) In `com/hotel/domain/UpiPayment.java` (Subclass Override):
+     ```java
+     @Override
+     public void generateBill() {
+         super.generateBill(); // reuses general invoice details
+         System.out.println("UPI ID         : " + upiId); // adds UPI-specific detail
+     }
+     ```
+
+  3) In `com/hotel/domain/CardPayment.java` (Subclass Override):
+     ```java
+     @Override
+     public void generateBill() {
+         super.generateBill();
+         String masked = cardNumber != null && cardNumber.length() > 4 ?
+             "**** **** **** " + cardNumber.substring(cardNumber.length() - 4) : cardNumber;
+         System.out.println("Card Holder    : " + cardHolderName);
+         System.out.println("Card Number    : " + masked);
+     }
+     ```
+
+  4) In `com/hotel/domain/CashPayment.java` (Subclass Override):
+     ```java
+     @Override
+     public void generateBill() {
+         super.generateBill();
+         System.out.println("Payment Details: Counter Cash Collection");
+     }
+     ```
+
+- Dynamic Method Dispatch in Action (`com/hotel/service/PaymentService.java`):
+  ```java
+  public static void generateBill(Reservation reservation) {
+      Payment payment = reservation.getPayment();
+      payment.generateBill(); // <--- POLYMORPHIC INVOCATION!
+  }
+  ```
+  Even though the reference type is base `Payment`, the JVM inspects the heap
+  at runtime:
+  - If the user paid with Card, `CardPayment.generateBill()` runs.
+  - If the user paid with UPI, `UpiPayment.generateBill()` runs.
+  - If the user paid with Cash, `CashPayment.generateBill()` runs.
+
+- Example 2: Details Display (`displayDetails` override)
+  - `Person.displayDetails()` -> prints ID, Name, Phone, Email.
+  - `HotelStaff.displayDetails()` -> calls `super.displayDetails()` + prints Role.
+  - `Admin.displayDetails()` -> calls `super.displayDetails()` + prints Admin Privileges.
+  - `Customer.displayDetails()` -> calls `super.displayDetails()` + prints Customer Address.
+
+--------------------------------------------------------------------------------
+B. Compile-Time Polymorphism (Method / Constructor Overloading)
+--------------------------------------------------------------------------------
+- Definition: Multiple methods or constructors with the same name but different
+  parameter lists.
+- Examples:
+  * Constructors throughout the domain model (default vs parameterized).
+  * Method overloading in repositories and services:
+    - `RoomRepository.findAvailableRooms()` vs `RoomRepository.findByType(String type)`
+    - `CustomerRepository.findByEmail(String email)` vs `CustomerRepository.findByPhone(String phone)`
+
+
+================================================================================
+                            3. ENCAPSULATION
+================================================================================
+DEFINITION:
+Encapsulation is the bundling of data (variables) and the methods that operate
+on that data into a single unit (class), while restricting direct access to
+internal details from the outside world (DATA HIDING).
+
+HOW ENCAPSULATION IS USED IN THIS PROJECT:
+
+--------------------------------------------------------------------------------
+A. Access Modifiers & Accessor/Mutator Methods (Getters & Setters)
+--------------------------------------------------------------------------------
+- All domain classes declare their instance variables with restrictive access:
+  * `private`: accessible ONLY within that specific class (e.g., `Customer.address`,
+    `Reservation.totalAmount`, `CardPayment.cardNumber`).
+  * `protected`: accessible within the package and subclasses (e.g., `Person.id`,
+    `Room.price`, `Payment.amount`).
+- Public getters/setters provide controlled read/write access.
+
+- File Example: `com/hotel/domain/Reservation.java`
+  ```java
+  public class Reservation {
+      private int reservationId;
+      private LocalDate checkInDate;
+      private LocalDate checkOutDate;
+      private String status;
+      private double totalAmount;
+      private Customer customer;
+      private Room room;
+      private Payment payment;
+
+      // Controlled Read Access
+      public int getReservationId() { return reservationId; }
+      public double getTotalAmount() { return totalAmount; }
+      public String getStatus() { return status; }
+
+      // Controlled Write Access
+      public void setStatus(String status) { this.status = status; }
+  }
+  ```
+
+--------------------------------------------------------------------------------
+B. Business Rule Encapsulation & State Transitions
+--------------------------------------------------------------------------------
+- Instead of external classes directly altering object states arbitrarily,
+  state transitions are encapsulated inside domain methods:
+  * In `Reservation.java`:
+    ```java
+    public void confirmBooking() {
+        this.status = "Confirmed";
+    }
+    public void cancelBooking() {
+        this.status = "Cancelled";
+    }
+    ```
+  * In `Payment.java`:
+    ```java
+    public void confirmPayment() {
+        this.paymentStatus = "Paid";
+        this.paymentDate = LocalDate.now(); // automatically timestamps payment!
+    }
+    ```
+  * In `Room.java`:
+    ```java
+    public boolean checkAvailability() {
+        return "Available".equalsIgnoreCase(status);
+    }
+    ```
+
+--------------------------------------------------------------------------------
+C. Validation in Mutator / Service Layers
+--------------------------------------------------------------------------------
+- Data cannot be set to invalid values.
+- In `RoomManagementService.java`:
+  Nightly price is validated: `if (price <= 0)` -> rejected!
+- In `AuthenticationCustomerService.java`:
+  Emails must match regex `isValidEmail()` and phone numbers must pass
+  `isValidPhone()` before any Customer object is instantiated.
+
+
+================================================================================
+                             4. ABSTRACTION
+================================================================================
+DEFINITION:
+Abstraction is the concept of hiding unnecessary implementation complexity and
+showing only the essential features to the user or caller. It decouples WHAT an
+operation does from HOW it does it.
+
+HOW ABSTRACTION IS USED IN THIS PROJECT:
+
+--------------------------------------------------------------------------------
+A. Layered 3-Tier Architecture (UI -> Service -> Repository -> Domain)
+--------------------------------------------------------------------------------
+- The application separates responsibilities across strict architectural layers:
+  1. Presentation Layer (`com.hotel.ui`):
+     - Displays menus, prompts user, reads terminal inputs.
+     - Knows NOTHING about how rooms are stored or payments processed.
+  2. Business Service Layer (`com.hotel.service`):
+     - Enforces rules (e.g. check-out must be after check-in, active rooms cannot be deleted).
+     - Orchestrates transactions between domain models and repositories.
+  3. Repository Layer (`com.hotel.repository`):
+     - Encapsulates and abstracts in-memory data storage (CRUD operations).
+  4. Domain Layer (`com.hotel.domain`):
+     - Represents the core business entities.
+
+- Why this is Abstraction:
+  When `CustomerPortal.java` executes `Reservation res = current.bookRoom(...);`,
+  it has zero knowledge of HashMaps, payment math, or date calculations.
+  The intricate complexity is completely abstracted behind clean method calls.
+
+--------------------------------------------------------------------------------
+B. Repository Pattern (Data Storage Abstraction)
+--------------------------------------------------------------------------------
+- File Example: `com/hotel/repository/RoomRepository.java`
+  ```java
+  public class RoomRepository {
+      private Map<Integer, Room> store = new HashMap<>();
+
+      public int add(Room r) { ... }
+      public Room getById(int id) { return store.get(id); }
+      public List<Room> getAll() { return new ArrayList<>(store.values()); }
+      public void delete(int id) { store.remove(id); }
+  }
+  ```
+- Abstraction Benefit:
+  Callers simply do `roomRepository.getById(101)`. If tomorrow the project replaces
+  the `HashMap` with a MySQL database, MongoDB, or external REST API, the
+  service and UI layers DO NOT change a single line of code!
+
+--------------------------------------------------------------------------------
+C. External System Abstraction (`PaymentGateway.java`)
+--------------------------------------------------------------------------------
+- File: `com/hotel/service/PaymentGateway.java`
+  ```java
+  public class PaymentGateway {
+      public static boolean charge(double amount, String method) {
+          String txnId = "TXN" + System.currentTimeMillis();
+          System.out.println(txnId + " processed payment of $" + amount + " via " + method);
+          return true;
+      }
+      public static boolean refund(double amount) {
+          String refundId = "REF" + System.currentTimeMillis();
+          System.out.println(refundId + " refunded $" + amount);
+          return true;
+      }
+  }
+  ```
+- Abstraction Benefit:
+  Simulates a real-world banking API (Stripe / Razorpay). The caller simply invokes
+  `PaymentGateway.charge(...)` without needing to implement bank network protocols.
+
+--------------------------------------------------------------------------------
+D. Information Abstraction / Data Masking
+--------------------------------------------------------------------------------
+- In `CardPayment.java`, credit card numbers are masked (`**** **** **** 1234`).
+- Callers interacting with `generateBill()` only see necessary receipt data;
+  sensitive raw payment card numbers remain abstracted and secure.
+
+
+================================================================================
+           5. BONUS COMPLEMENTARY CONCEPT: AGGREGATION / ASSOCIATION
+================================================================================
+DEFINITION:
+While Inheritance represents an "IS-A" relationship, Association/Aggregation
+represents a "HAS-A" relationship, where a class contains references to other
+independent classes.
+
+FILE EXAMPLE: `com/hotel/domain/Reservation.java`
+```java
+public class Reservation {
+    private Customer customer; // Reservation HAS-A Customer
+    private Room room;         // Reservation HAS-A Room
+    private Payment payment;   // Reservation HAS-A Payment
+    ...
+}
+```
+WHY THIS MATTERS:
+- A Reservation is NOT a subclass of Room, nor is it a subclass of Customer.
+- Instead, it loosely connects a Customer, a Room, and a Payment together.
+- If a Reservation is cancelled, the Room and Customer still exist independently.
+- This favors Object Composition over Inheritance, following modern software
+  design best practices ("Favor composition over inheritance").
+
+
+================================================================================
+                    QUICK COMPARISON & VIVA CHEAT SHEET
+================================================================================
+| Concept       | Key Question                  | Answer in This Project                     |
+| :------------ | :---------------------------- | :----------------------------------------- |
+| Inheritance   | "Where is code reused?"       | Person -> HotelStaff -> Admin              |
+|               |                               | Person -> Customer                         |
+|               |                               | Room -> Standard / Deluxe / Suite          |
+|               |                               | Payment -> UPI / Card / Cash               |
+|               |                               |                                            |
+| Polymorphism  | "Where are multiple forms?"   | `generateBill()` behaves differently for   |
+|               |                               | UPI, Card, and Cash objects.               |
+|               |                               | `displayDetails()` overridden for Person,  |
+|               |                               | Staff, Admin, Customer.                    |
+|               |                               |                                            |
+| Encapsulation | "Where is data protected?"    | `private`/`protected` fields with getters; |
+|               |                               | price & phone validation;                  |
+|               |                               | encapsulated `confirmBooking()`.           |
+|               |                               |                                            |
+| Abstraction   | "Where is complexity hidden?" | UI separated from Service & Repository;    |
+|               |                               | PaymentGateway abstracts bank processing;  |
+|               |                               | Card number masking.                       |
+
+================================================================================
+                               END OF DOCUMENT
+================================================================================

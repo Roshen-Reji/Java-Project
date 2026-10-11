@@ -9,20 +9,20 @@ public class Admin extends HotelStaff {
         super(id, name, "Admin", email, phone);
     }
 
-    public void createRoom(int roomNo, String roomType, double price, String status, String description) {
-        RoomManagementService.addRoom(roomNo, roomType, price, status, description);
+    public boolean createRoom(int roomNo, String roomType, double price, String status, String description) {
+        return RoomManagementService.addRoom(roomNo, roomType, price, status, description) != null;
     }
 
-    public void deleteRoom(int roomNo) {
-        RoomManagementService.deleteRoom(roomNo);
+    public boolean deleteRoom(int roomNo) {
+        return RoomManagementService.deleteRoom(roomNo);
     }
 
-    public void createStaff(int staffId, String name, String role, String email, String phone) {
-        StaffService.addStaff(new HotelStaff(staffId, name, role, email, phone));
+    public boolean createStaff(int staffId, String name, String role, String email, String phone) {
+        return StaffService.addStaff(new HotelStaff(staffId, name, role, email, phone)) != null;
     }
 
-    public void removeStaff(int staffId) {
-        StaffService.deleteStaff(staffId);
+    public boolean removeStaff(int staffId) {
+        return StaffService.deleteStaff(staffId);
     }
 
     @Override

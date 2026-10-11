@@ -1,6 +1,7 @@
 package com.hotel.ui;
 
 import com.hotel.domain.Customer;
+import com.hotel.domain.Payment;
 import com.hotel.domain.Reservation;
 import com.hotel.domain.Room;
 import com.hotel.service.AuthenticationCustomerService;
@@ -96,6 +97,7 @@ public class CustomerPortal {
         String name = "";
         while (true) {
             System.out.print("Name: ");
+            if (!sc.hasNextLine()) return null;
             name = sc.nextLine().trim();
             if (!name.isEmpty()) {
                 break;
@@ -105,6 +107,7 @@ public class CustomerPortal {
         String phone = "";
         while (true) {
             System.out.print("Phone (7-15 digits, e.g. +1 555-123-4567): ");
+            if (!sc.hasNextLine()) return null;
             phone = sc.nextLine().trim();
             if (AuthenticationCustomerService.isValidPhone(phone)) {
                 break;
@@ -114,6 +117,7 @@ public class CustomerPortal {
         String email = "";
         while (true) {
             System.out.print("Email (e.g. name@example.com): ");
+            if (!sc.hasNextLine()) return null;
             email = sc.nextLine().trim();
             if (AuthenticationCustomerService.isValidEmail(email)) {
                 break;
@@ -121,6 +125,7 @@ public class CustomerPortal {
             System.out.println("Error: Invalid email format. Use like name@example.com.");
         }
         System.out.print("Address: ");
+        if (!sc.hasNextLine()) return null;
         String address = sc.nextLine().trim();
         Customer c = AuthenticationCustomerService.registerCustomer(name, phone, email, address);
         if (c != null) {
@@ -132,6 +137,7 @@ public class CustomerPortal {
 
     private static Customer handleLogin(Scanner sc) {
         System.out.print("Email or phone: ");
+        if (!sc.hasNextLine()) return null;
         String key = sc.nextLine().trim();
         if (key.isEmpty()) {
             System.out.println("Error: Please enter your email or phone.");
@@ -159,6 +165,11 @@ public class CustomerPortal {
     }
 
     private static void handleBookRoom(Scanner sc, Customer current) {
+        List<Room> available = RoomManagementService.listAvailableRooms();
+        if (available.isEmpty()) {
+            System.out.println("No available rooms for booking.");
+            return;
+        }
         handleViewRooms();
         int roomNo = readIntPrompt(sc, "Enter Room no to book: ");
         Room targetRoom = RoomManagementService.findRoom(roomNo);
@@ -180,7 +191,13 @@ public class CustomerPortal {
         System.out.println("1. UPI");
         System.out.println("2. Card");
         System.out.println("3. Cash");
-        int payChoice = readIntChoice(sc);
+        int payChoice = 0;
+        while (payChoice < 1 || payChoice > 3) {
+            payChoice = readIntChoice(sc);
+            if (payChoice < 1 || payChoice > 3) {
+                System.out.println("Invalid choice. Please enter 1, 2, or 3.");
+            }
+        }
         String paymentMethod = "Cash";
         String paymentDetail = "";
 
@@ -195,8 +212,14 @@ public class CustomerPortal {
             paymentMethod = "Card";
             System.out.print("Enter Card Number: ");
             String cardNum = sc.nextLine().trim();
+            if (cardNum.isEmpty()) {
+                cardNum = "1234567890123456";
+            }
             System.out.print("Enter Card Holder Name: ");
             String cardHolder = sc.nextLine().trim();
+            if (cardHolder.isEmpty()) {
+                cardHolder = current.getName();
+            }
             paymentDetail = cardNum + ";" + cardHolder;
         } else {
             paymentMethod = "Cash";
@@ -242,9 +265,8 @@ public class CustomerPortal {
             System.out.println("Dates          : " + r.getCheckInDate() + " to " + r.getCheckOutDate() + " (" + nights + " nights)");
             System.out.println("Total Amount   : $" + String.format("%.2f", r.getTotalAmount()));
             System.out.println("Booking Status : " + r.getStatus());
-            if (r.getPayment() != null) {
-                System.out.println("Payment Method : " + r.getPayment().getPaymentMethod());
-                System.out.println("Payment Status : " + r.getPayment().getPaymentStatus());
+            Payment pay = r.getPayment() != null ? r.getPayment() : PaymentService.getPaymentRepository().findByReservationId(r.getReservationId());
+            if (pay != null) {
                 PaymentService.generateBill(r);
             } else {
                 System.out.println("(No payment record)");
@@ -256,6 +278,9 @@ public class CustomerPortal {
     private static int readIntChoice(Scanner sc) {
         while (true) {
             System.out.print("> ");
+            if (!sc.hasNextLine()) {
+                return 7;
+            }
             String line = sc.nextLine().trim();
             try {
                 return Integer.parseInt(line);
@@ -268,6 +293,9 @@ public class CustomerPortal {
     private static int readIntPrompt(Scanner sc, String prompt) {
         while (true) {
             System.out.print(prompt);
+            if (!sc.hasNextLine()) {
+                return 0;
+            }
             String line = sc.nextLine().trim();
             try {
                 return Integer.parseInt(line);
@@ -280,6 +308,9 @@ public class CustomerPortal {
     private static LocalDate readDatePrompt(Scanner sc, String prompt) {
         while (true) {
             System.out.print(prompt);
+            if (!sc.hasNextLine()) {
+                return LocalDate.now().plusDays(1);
+            }
             String line = sc.nextLine().trim();
             try {
                 return LocalDate.parse(line);
