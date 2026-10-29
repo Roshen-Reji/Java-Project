@@ -9,6 +9,10 @@ public class Admin extends HotelStaff {
         super(id, name, "Admin", email, phone);
     }
 
+    public Admin(int id, String name, String email, String phone, String password) {
+        super(id, name, "Admin", email, phone, password);
+    }
+
     public void createRoom(int roomNo, String roomType, double price, String status, String description) {
         RoomManagementService.addRoom(roomNo, roomType, price, status, description);
     }

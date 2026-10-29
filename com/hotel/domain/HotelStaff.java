@@ -7,10 +7,25 @@ import java.util.List;
 
 public class HotelStaff extends Person {
     protected String role;
+    protected String password = "";
 
     public HotelStaff(int staffId, String name, String role, String email, String phone) {
         super(staffId, name, phone, email);
         this.role = role;
+    }
+
+    public HotelStaff(int staffId, String name, String role, String email, String phone, String password) {
+        super(staffId, name, phone, email);
+        this.role = role;
+        this.password = password != null ? password : "";
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password != null ? password : "";
     }
 
     public int getStaffId() {
