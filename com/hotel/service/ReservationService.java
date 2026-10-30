@@ -22,19 +22,51 @@ public class ReservationService {
             System.out.println("Error: Reservation details cannot be null.");
             return null;
         }
+        if (checkIn.isBefore(LocalDate.now())) {
+            String err = "Check-in date cannot be in the past.";
+            System.out.println("Error: " + err);
+            throw new IllegalArgumentException(err);
+        }
         if (!checkOut.isAfter(checkIn)) {
-            System.out.println("Error: Check-out date must be after check-in date.");
-            return null;
+            String err = "Check-out date must be after check-in date.";
+            System.out.println("Error: " + err);
+            throw new IllegalArgumentException(err);
         }
-        if (!room.checkAvailability()) {
-            System.out.println("Error: Room " + room.getRoomNo() + " is not available.");
-            return null;
+        if ("Maintenance".equalsIgnoreCase(room.getStatus())) {
+            String err = "Room " + room.getRoomNo() + " is currently under maintenance.";
+            System.out.println("Error: " + err);
+            throw new IllegalArgumentException(err);
         }
+
+        if (!reservationRepository.isRoomAvailableForDateRange(room.getRoomNo(), checkIn, checkOut)) {
+            List<Reservation> active = reservationRepository.findActiveReservationsByRoomId(room.getRoomNo());
+            for (Reservation ex : active) {
+                if (ex.getCheckInDate() != null && ex.getCheckOutDate() != null) {
+                    if (checkIn.isBefore(ex.getCheckOutDate()) && checkOut.isAfter(ex.getCheckInDate())) {
+                        String errMsg = "Room #" + room.getRoomNo() + " is already reserved from " +
+                                ex.getCheckInDate() + " to " + ex.getCheckOutDate() +
+                                ". You can book it before " + ex.getCheckInDate() +
+                                " (Check-Out on or before " + ex.getCheckInDate() + ") or from " +
+                                ex.getCheckOutDate() + " onwards.";
+                        System.out.println("Error: " + errMsg);
+                        throw new IllegalArgumentException(errMsg);
+                    }
+                }
+            }
+            String errMsg = "Room #" + room.getRoomNo() + " is not available for the selected dates.";
+            System.out.println("Error: " + errMsg);
+            throw new IllegalArgumentException(errMsg);
+        }
+
         long nights = ChronoUnit.DAYS.between(checkIn, checkOut);
         double totalAmount = nights * room.getPrice();
         Reservation r = new Reservation(0, customer, room, checkIn, checkOut, "Pending Approval", totalAmount);
         reservationRepository.add(r);
-        RoomManagementService.updateStatus(room.getRoomNo(), "Pending");
+
+        // Only update room status to Pending if the reservation starts today
+        if (!checkIn.isAfter(LocalDate.now())) {
+            RoomManagementService.updateStatus(room.getRoomNo(), "Pending");
+        }
         return r;
     }
 
@@ -56,7 +88,12 @@ public class ReservationService {
         if (paymentConfirmed) {
             r.confirmBooking();
             if (r.getRoom() != null) {
-                RoomManagementService.updateStatus(r.getRoom().getRoomNo(), "Booked");
+                LocalDate today = LocalDate.now();
+                if (r.getCheckInDate() != null && !r.getCheckInDate().isAfter(today) && r.getCheckOutDate().isAfter(today)) {
+                    RoomManagementService.updateStatus(r.getRoom().getRoomNo(), "Booked");
+                } else {
+                    RoomManagementService.updateStatus(r.getRoom().getRoomNo(), "Available");
+                }
             }
             reservationRepository.update(r);
             System.out.println("Reservation #" + reservationId + " is now confirmed and room is reserved!");
@@ -132,5 +169,9 @@ public class ReservationService {
             }
         }
         return pending;
+    }
+
+    public static Reservation getActiveReservationForRoom(int roomId) {
+        return reservationRepository.findActiveReservationByRoomId(roomId);
     }
 }

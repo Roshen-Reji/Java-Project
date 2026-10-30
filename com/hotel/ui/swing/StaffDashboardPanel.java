@@ -2,9 +2,11 @@ package com.hotel.ui.swing;
 
 import com.hotel.domain.Customer;
 import com.hotel.domain.HotelStaff;
+import com.hotel.domain.Payment;
 import com.hotel.domain.Reservation;
 import com.hotel.domain.Room;
 import com.hotel.service.AuthenticationCustomerService;
+import com.hotel.service.PaymentService;
 import com.hotel.service.ReservationService;
 import com.hotel.service.RoomManagementService;
 import java.awt.BorderLayout;
@@ -18,6 +20,7 @@ import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
+import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -75,7 +78,7 @@ public class StaffDashboardPanel extends JPanel {
     }
 
     private void initUI() {
-        // --- Left Sidebar ---
+
         JPanel sidebar = new JPanel();
         sidebar.setLayout(new BoxLayout(sidebar, BoxLayout.Y_AXIS));
         sidebar.setBackground(UIStyle.COLOR_PRIMARY_DARK);
@@ -96,7 +99,6 @@ public class StaffDashboardPanel extends JPanel {
         sidebar.add(subBrand);
         sidebar.add(Box.createVerticalStrut(24));
 
-        // Staff Info Card
         JPanel staffCard = new JPanel();
         staffCard.setLayout(new BoxLayout(staffCard, BoxLayout.Y_AXIS));
         staffCard.setBackground(UIStyle.COLOR_SIDEBAR_HOVER);
@@ -127,7 +129,6 @@ public class StaffDashboardPanel extends JPanel {
 
         add(sidebar, BorderLayout.WEST);
 
-        // --- Tabbed Content Area ---
         JTabbedPane tabbedPane = new JTabbedPane();
         tabbedPane.setFont(UIStyle.FONT_BOLD);
         tabbedPane.setBorder(new EmptyBorder(12, 12, 12, 12));
@@ -139,7 +140,6 @@ public class StaffDashboardPanel extends JPanel {
         add(tabbedPane, BorderLayout.CENTER);
     }
 
-    // --- Tab 1: All Reservations ---
     private JPanel buildReservationsTab() {
         JPanel panel = new JPanel(new BorderLayout(14, 14));
         panel.setOpaque(false);
@@ -169,7 +169,6 @@ public class StaffDashboardPanel extends JPanel {
 
         panel.add(new JScrollPane(resTable), BorderLayout.CENTER);
 
-        // Action Toolbar
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 8));
         actions.setOpaque(false);
 
@@ -189,6 +188,41 @@ public class StaffDashboardPanel extends JPanel {
         actions.add(btnCheckIn);
         actions.add(btnCheckOut);
         actions.add(btnCancel);
+
+        JLabel lblPayStatus = new JLabel("Payment Status:");
+        lblPayStatus.setFont(UIStyle.FONT_BOLD);
+        lblPayStatus.setForeground(UIStyle.COLOR_TEXT_MAIN);
+
+        JComboBox<String> cbStaffPayStatus = new JComboBox<>(new String[]{"COMPLETED", "PAID", "PENDING", "REFUNDED", "FAILED"});
+        cbStaffPayStatus.setFont(UIStyle.FONT_REGULAR);
+        cbStaffPayStatus.setPreferredSize(new Dimension(140, 36));
+
+        JButton btnUpdatePay = UIStyle.createSecondaryButton("Update Payment Status");
+        btnUpdatePay.addActionListener(e -> {
+            int row = resTable.getSelectedRow();
+            if (row < 0) {
+                JOptionPane.showMessageDialog(this, "Select a reservation to update its payment status.", "Notice", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            int resId = (Integer) resTableModel.getValueAt(row, 0);
+            Payment p = PaymentService.getPaymentRepository().findByReservationId(resId);
+            if (p == null) {
+                JOptionPane.showMessageDialog(this, "No payment record found for Reservation #" + resId, "Notice", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            String newStatus = (String) cbStaffPayStatus.getSelectedItem();
+            boolean ok = PaymentService.updatePaymentStatus(p.getPaymentId(), newStatus);
+            if (ok) {
+                JOptionPane.showMessageDialog(this, "Reservation #" + resId + " (Payment #" + p.getPaymentId() + ") updated to " + newStatus, "Payment Updated", JOptionPane.INFORMATION_MESSAGE);
+                refreshReservations();
+            } else {
+                JOptionPane.showMessageDialog(this, "Failed to update payment status.", "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+
+        actions.add(lblPayStatus);
+        actions.add(cbStaffPayStatus);
+        actions.add(btnUpdatePay);
 
         panel.add(actions, BorderLayout.SOUTH);
         return panel;
@@ -260,7 +294,6 @@ public class StaffDashboardPanel extends JPanel {
         }
     }
 
-    // --- Tab 2: Room Status Management ---
     private JPanel buildRoomManagementTab() {
         JPanel panel = new JPanel(new BorderLayout(14, 14));
         panel.setOpaque(false);
@@ -277,7 +310,7 @@ public class StaffDashboardPanel extends JPanel {
         topBar.add(refreshBtn, BorderLayout.EAST);
         panel.add(topBar, BorderLayout.NORTH);
 
-        String[] cols = {"Room No", "Room Type", "Price", "Status", "Description"};
+        String[] cols = {"Room No", "Room Type", "Price (₹)", "Status", "Reservation ID", "Description"};
         roomTableModel = new DefaultTableModel(cols, 0) {
             @Override
             public boolean isCellEditable(int r, int c) { return false; }
@@ -285,11 +318,11 @@ public class StaffDashboardPanel extends JPanel {
         roomTable = new JTable(roomTableModel);
         UIStyle.styleTable(roomTable);
         roomTable.getColumnModel().getColumn(3).setCellRenderer(UIStyle.createStatusBadgeRenderer());
+        roomTable.getColumnModel().getColumn(4).setCellRenderer(UIStyle.createStatusBadgeRenderer());
         roomTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
         panel.add(new JScrollPane(roomTable), BorderLayout.CENTER);
 
-        // Status Toggle Buttons
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 8));
         actions.setOpaque(false);
 
@@ -317,11 +350,20 @@ public class StaffDashboardPanel extends JPanel {
             return;
         }
         int roomNo = (Integer) roomTableModel.getValueAt(row, 0);
+
+        if ("Available".equalsIgnoreCase(status)) {
+            Reservation activeRes = resService.getActiveReservationForRoom(roomNo);
+            while (activeRes != null) {
+                activeRes.setStatus("Completed");
+                resService.getReservationRepository().update(activeRes);
+                activeRes = resService.getActiveReservationForRoom(roomNo);
+            }
+        }
+
         RoomManagementService.updateStatus(roomNo, status);
         refreshRooms();
     }
 
-    // --- Tab 3: Customer Directory ---
     private JPanel buildCustomerDirectoryTab() {
         JPanel panel = new JPanel(new BorderLayout(14, 14));
         panel.setOpaque(false);
@@ -409,7 +451,7 @@ public class StaffDashboardPanel extends JPanel {
                     roomType,
                     r.getCheckInDate(),
                     r.getCheckOutDate(),
-                    String.format("$%.2f", r.getTotalAmount()),
+                    String.format("₹%.2f", r.getTotalAmount()),
                     r.getStatus(),
                     payStatus
             });
@@ -420,11 +462,21 @@ public class StaffDashboardPanel extends JPanel {
         roomTableModel.setRowCount(0);
         List<Room> rooms = roomService.listAllRooms();
         for (Room r : rooms) {
+            Reservation activeRes = resService.getActiveReservationForRoom(r.getRoomNo());
+            String resIdStr = "—";
+            String status = r.getStatus();
+            if (activeRes != null) {
+                resIdStr = "#" + activeRes.getReservationId();
+                if ("AVAILABLE".equalsIgnoreCase(status)) {
+                    status = "BOOKED";
+                }
+            }
             roomTableModel.addRow(new Object[]{
                     r.getRoomNo(),
                     r.getRoomType(),
-                    String.format("$%.2f", r.getPrice()),
-                    r.getStatus(),
+                    String.format("₹%.2f", r.getPrice()),
+                    status,
+                    resIdStr,
                     r.getDescription()
             });
         }

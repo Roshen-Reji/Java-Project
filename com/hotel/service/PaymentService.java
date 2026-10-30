@@ -96,6 +96,20 @@ public class PaymentService {
         payment.generateBill();
     }
 
+    public static boolean updatePaymentStatus(int paymentId, String newStatus) {
+        if (newStatus == null || newStatus.trim().isEmpty()) {
+            System.out.println("Error: Payment status cannot be empty.");
+            return false;
+        }
+        boolean ok = paymentRepository.updatePaymentStatus(paymentId, newStatus.trim());
+        if (ok) {
+            System.out.println("Payment #" + paymentId + " status updated to " + newStatus.trim());
+        } else {
+            System.out.println("Error: Could not update status for Payment #" + paymentId);
+        }
+        return ok;
+    }
+
     public static List<Payment> getAllPayments() {
         return paymentRepository.getAll();
     }

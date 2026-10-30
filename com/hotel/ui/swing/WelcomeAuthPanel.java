@@ -6,14 +6,13 @@ import com.hotel.domain.HotelStaff;
 import com.hotel.service.AuthenticationCustomerService;
 import com.hotel.service.StaffService;
 import java.awt.BorderLayout;
-import java.awt.Color;
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
-import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
@@ -21,7 +20,6 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPasswordField;
-import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTextField;
 import javax.swing.border.EmptyBorder;
@@ -32,18 +30,15 @@ public class WelcomeAuthPanel extends JPanel {
     private final AuthenticationCustomerService authService;
     private final StaffService staffService;
 
-    // Customer Login Fields
     private JTextField tfCustLoginKey;
     private JPasswordField pfCustLoginPass;
 
-    // Customer Register Fields
     private JTextField tfRegName;
     private JTextField tfRegPhone;
     private JTextField tfRegEmail;
     private JTextField tfRegAddress;
     private JPasswordField pfRegPass;
 
-    // Staff / Admin Login Fields
     private JTextField tfStaffLoginKey;
     private JPasswordField pfStaffPass;
 
@@ -54,63 +49,38 @@ public class WelcomeAuthPanel extends JPanel {
         this.authService = authService;
         this.staffService = staffService;
 
-        setLayout(new BorderLayout());
+        setLayout(new GridBagLayout());
         setBackground(UIStyle.COLOR_BG);
 
         initUI();
     }
 
     private void initUI() {
-        // --- Left Brand Banner ---
-        JPanel leftBanner = new JPanel();
-        leftBanner.setLayout(new BoxLayout(leftBanner, BoxLayout.Y_AXIS));
-        leftBanner.setBackground(UIStyle.COLOR_PRIMARY_DARK);
-        leftBanner.setPreferredSize(new Dimension(380, 0));
-        leftBanner.setBorder(new EmptyBorder(40, 36, 40, 36));
+
+        JPanel cardContainer = UIStyle.createCardPanel();
+        cardContainer.setLayout(new BorderLayout(0, 20));
+        cardContainer.setBorder(new EmptyBorder(32, 40, 36, 40));
+        cardContainer.setPreferredSize(new Dimension(680, 560));
+
+        JPanel headerPanel = new JPanel();
+        headerPanel.setLayout(new BoxLayout(headerPanel, BoxLayout.Y_AXIS));
+        headerPanel.setOpaque(false);
 
         JLabel logo = new JLabel("HOTEL ASTRA");
-        logo.setFont(new Font("Segoe UI", Font.BOLD, 28));
-        logo.setForeground(Color.WHITE);
+        logo.setFont(new Font("Segoe UI", Font.BOLD, 26));
+        logo.setForeground(UIStyle.COLOR_PRIMARY_DARK);
+        logo.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        JLabel tag = new JLabel("Luxury Reservation & Management Suite");
-        tag.setFont(UIStyle.FONT_SMALL);
-        tag.setForeground(UIStyle.COLOR_CYAN);
+        JLabel subtitle = new JLabel("Luxury Reservation & Management Suite");
+        subtitle.setFont(UIStyle.FONT_REGULAR);
+        subtitle.setForeground(UIStyle.COLOR_TEXT_MUTED);
+        subtitle.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        leftBanner.add(logo);
-        leftBanner.add(Box.createVerticalStrut(6));
-        leftBanner.add(tag);
-        leftBanner.add(Box.createVerticalStrut(32));
+        headerPanel.add(logo);
+        headerPanel.add(Box.createVerticalStrut(4));
+        headerPanel.add(subtitle);
 
-        addFeatureBullet(leftBanner, "Polymorphic Room Types", "Standard, Deluxe, and Luxury Suite models.");
-        addFeatureBullet(leftBanner, "Dynamic Payment Processing", "Instant UPI, Card with masking, and Desk Cash.");
-        addFeatureBullet(leftBanner, "Persistent SQL Database", "Robust JDBC layer with automated schema creation.");
-        addFeatureBullet(leftBanner, "Role-Based Access Control", "Dedicated Guest, Staff, and Administrator portals.");
-        addFeatureBullet(leftBanner, "KTU 2024 Scheme Standard", "Clean S3 Object-Oriented Java Architecture.");
-
-        leftBanner.add(Box.createVerticalGlue());
-
-        // Status Badge
-        JPanel statusBox = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 4));
-        statusBox.setBackground(UIStyle.COLOR_SIDEBAR_HOVER);
-        statusBox.setBorder(new EmptyBorder(6, 10, 6, 10));
-        statusBox.setMaximumSize(new Dimension(310, 36));
-
-        JLabel dot = new JLabel("●");
-        dot.setForeground(UIStyle.COLOR_SUCCESS);
-        JLabel dbStatus = new JLabel("SQLite Database Connected & Seeded");
-        dbStatus.setFont(UIStyle.FONT_SMALL);
-        dbStatus.setForeground(Color.WHITE);
-        statusBox.add(dot);
-        statusBox.add(dbStatus);
-
-        leftBanner.add(statusBox);
-
-        add(leftBanner, BorderLayout.WEST);
-
-        // --- Right Auth Tabs ---
-        JPanel rightArea = new JPanel(new BorderLayout());
-        rightArea.setOpaque(false);
-        rightArea.setBorder(new EmptyBorder(30, 40, 30, 40));
+        cardContainer.add(headerPanel, BorderLayout.NORTH);
 
         JTabbedPane tabbedPane = new JTabbedPane();
         tabbedPane.setFont(UIStyle.FONT_BOLD);
@@ -119,26 +89,17 @@ public class WelcomeAuthPanel extends JPanel {
         tabbedPane.addTab("Customer Sign Up", buildCustomerRegisterTab());
         tabbedPane.addTab("Staff & Admin Access", buildStaffLoginTab());
 
-        rightArea.add(tabbedPane, BorderLayout.CENTER);
-        add(rightArea, BorderLayout.CENTER);
+        cardContainer.add(tabbedPane, BorderLayout.CENTER);
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.weightx = 1.0;
+        gbc.weighty = 1.0;
+        gbc.anchor = GridBagConstraints.CENTER;
+        add(cardContainer, gbc);
     }
 
-    private void addFeatureBullet(JPanel parent, String title, String desc) {
-        JLabel tLbl = new JLabel("✦ " + title);
-        tLbl.setFont(UIStyle.FONT_BOLD);
-        tLbl.setForeground(Color.WHITE);
-
-        JLabel dLbl = new JLabel("   " + desc);
-        dLbl.setFont(UIStyle.FONT_SMALL);
-        dLbl.setForeground(new Color(0x94, 0xA3, 0xB8));
-
-        parent.add(tLbl);
-        parent.add(Box.createVerticalStrut(2));
-        parent.add(dLbl);
-        parent.add(Box.createVerticalStrut(16));
-    }
-
-    // --- Tab 1: Customer Login ---
     private JPanel buildCustomerLoginTab() {
         JPanel panel = new JPanel(new GridBagLayout());
         panel.setOpaque(false);
@@ -165,30 +126,21 @@ public class WelcomeAuthPanel extends JPanel {
         panel.add(new JLabel("Email or Phone:"), g);
         g.gridx = 1;
         tfCustLoginKey = UIStyle.createTextField(22);
-        tfCustLoginKey.setText("john@example.com");
         panel.add(tfCustLoginKey, g);
 
         g.gridx = 0; g.gridy = 3;
         panel.add(new JLabel("Password:"), g);
         g.gridx = 1;
         pfCustLoginPass = UIStyle.createPasswordField(22);
-        pfCustLoginPass.setText("password123");
         panel.add(pfCustLoginPass, g);
 
         g.gridx = 0; g.gridy = 4; g.gridwidth = 2;
         JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
         btnPanel.setOpaque(false);
 
-        JButton btnQuickFill = UIStyle.createSecondaryButton("Demo Guest");
-        btnQuickFill.addActionListener(e -> {
-            tfCustLoginKey.setText("john@example.com");
-            pfCustLoginPass.setText("password123");
-        });
-
         JButton btnLogin = UIStyle.createPrimaryButton("Log In to Customer Portal");
         btnLogin.addActionListener(e -> handleCustomerLogin());
 
-        btnPanel.add(btnQuickFill);
         btnPanel.add(btnLogin);
         panel.add(btnPanel, g);
 
@@ -197,6 +149,7 @@ public class WelcomeAuthPanel extends JPanel {
 
     private void handleCustomerLogin() {
         String key = tfCustLoginKey.getText().trim();
+        String pass = new String(pfCustLoginPass.getPassword()).trim();
         if (key.isEmpty()) {
             JOptionPane.showMessageDialog(this, "Please enter your email or phone.", "Required", JOptionPane.WARNING_MESSAGE);
             return;
@@ -204,13 +157,18 @@ public class WelcomeAuthPanel extends JPanel {
 
         Customer c = authService.login(key);
         if (c != null) {
+            if (c.getPassword() != null && !c.getPassword().isEmpty()) {
+                if (pass.isEmpty() || !c.getPassword().equals(pass)) {
+                    JOptionPane.showMessageDialog(this, "Invalid password. Please try again.", "Login Failed", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+            }
             mainFrame.showCustomerDashboard(c);
         } else {
             JOptionPane.showMessageDialog(this, "No customer found with \"" + key + "\". Please check details or sign up.", "Login Failed", JOptionPane.ERROR_MESSAGE);
         }
     }
 
-    // --- Tab 2: Customer Registration ---
     private JPanel buildCustomerRegisterTab() {
         JPanel panel = new JPanel(new GridBagLayout());
         panel.setOpaque(false);
@@ -308,7 +266,6 @@ public class WelcomeAuthPanel extends JPanel {
         }
     }
 
-    // --- Tab 3: Staff & Admin Login ---
     private JPanel buildStaffLoginTab() {
         JPanel panel = new JPanel(new GridBagLayout());
         panel.setOpaque(false);
@@ -335,37 +292,21 @@ public class WelcomeAuthPanel extends JPanel {
         panel.add(new JLabel("Staff ID or Email:"), g);
         g.gridx = 1;
         tfStaffLoginKey = UIStyle.createTextField(22);
-        tfStaffLoginKey.setText("admin@hotel.com");
         panel.add(tfStaffLoginKey, g);
 
         g.gridx = 0; g.gridy = 3;
         panel.add(new JLabel("PIN / Password:"), g);
         g.gridx = 1;
         pfStaffPass = UIStyle.createPasswordField(22);
-        pfStaffPass.setText("1234");
         panel.add(pfStaffPass, g);
 
         g.gridx = 0; g.gridy = 4; g.gridwidth = 2;
         JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
         btnPanel.setOpaque(false);
 
-        JButton btnDemoStaff = UIStyle.createSecondaryButton("Demo Staff");
-        btnDemoStaff.addActionListener(e -> {
-            tfStaffLoginKey.setText("alice@hotel.com");
-            pfStaffPass.setText("staff");
-        });
-
-        JButton btnDemoAdmin = UIStyle.createSecondaryButton("Demo Admin");
-        btnDemoAdmin.addActionListener(e -> {
-            tfStaffLoginKey.setText("admin@hotel.com");
-            pfStaffPass.setText("1234");
-        });
-
         JButton btnLogin = UIStyle.createPrimaryButton("Authenticate & Enter Portal");
         btnLogin.addActionListener(e -> handleStaffLogin());
 
-        btnPanel.add(btnDemoStaff);
-        btnPanel.add(btnDemoAdmin);
         btnPanel.add(btnLogin);
         panel.add(btnPanel, g);
 
@@ -381,8 +322,8 @@ public class WelcomeAuthPanel extends JPanel {
             return;
         }
 
-        // Check PIN 1234 or "admin" override
-        if (pass.equals("1234") || pass.equalsIgnoreCase("admin") || key.equalsIgnoreCase("admin") || key.equals("999")) {
+        if ((key.equals("999") || key.equalsIgnoreCase("admin@hotel.com") || key.equalsIgnoreCase("admin"))
+                && (pass.equalsIgnoreCase("admin") || pass.equals("1234"))) {
             HotelStaff s = staffService.findStaff(999);
             if (s instanceof Admin) {
                 mainFrame.showAdminDashboard((Admin) s);
@@ -394,7 +335,6 @@ public class WelcomeAuthPanel extends JPanel {
             }
         }
 
-        // Try lookup by numeric ID or by email
         HotelStaff staff = null;
         try {
             int staffId = Integer.parseInt(key);
@@ -404,6 +344,12 @@ public class WelcomeAuthPanel extends JPanel {
         }
 
         if (staff != null) {
+            if (staff.getPassword() != null && !staff.getPassword().isEmpty()) {
+                if (pass.isEmpty() || !staff.getPassword().equals(pass)) {
+                    JOptionPane.showMessageDialog(this, "Invalid credentials. Incorrect password.", "Access Denied", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+            }
             if (staff instanceof Admin) {
                 mainFrame.showAdminDashboard((Admin) staff);
             } else {

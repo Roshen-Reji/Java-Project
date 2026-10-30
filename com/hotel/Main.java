@@ -16,24 +16,44 @@ import javax.swing.SwingUtilities;
 public class Main {
 
     public static void main(String[] args) {
-        // Step 1: Initialize Database and Schema / Seed Data
+
         DatabaseInitializer.initialize();
 
-        // Step 2: Check for --cli argument for legacy console mode
         boolean cliMode = false;
+        boolean dbMode = false;
+        boolean dbDumpMode = false;
+
         if (args != null && args.length > 0) {
             for (String arg : args) {
                 if ("--cli".equalsIgnoreCase(arg) || "-cli".equalsIgnoreCase(arg) || "cli".equalsIgnoreCase(arg)) {
                     cliMode = true;
-                    break;
+                } else if ("--db".equalsIgnoreCase(arg) || "-db".equalsIgnoreCase(arg) || "db".equalsIgnoreCase(arg)
+                        || "--inspect".equalsIgnoreCase(arg) || "-inspect".equalsIgnoreCase(arg)
+                        || "--view-db".equalsIgnoreCase(arg) || "-view-db".equalsIgnoreCase(arg)) {
+                    dbMode = true;
+                } else if ("--db-dump".equalsIgnoreCase(arg) || "-db-dump".equalsIgnoreCase(arg)
+                        || "--dump".equalsIgnoreCase(arg) || "dump".equalsIgnoreCase(arg)) {
+                    dbDumpMode = true;
                 }
             }
+        }
+
+        if (dbDumpMode) {
+            com.hotel.ui.DatabaseInspectorCLI.dumpAll();
+            return;
+        }
+
+        if (dbMode) {
+            Scanner sc = new Scanner(System.in);
+            com.hotel.ui.DatabaseInspectorCLI.start(sc);
+            sc.close();
+            return;
         }
 
         if (cliMode) {
             runCliMenu();
         } else {
-            // Step 3: Default — Launch modern Java Swing GUI on the Event Dispatch Thread
+
             SwingUtilities.invokeLater(() -> {
                 AuthenticationCustomerService authService = new AuthenticationCustomerService();
                 RoomManagementService roomService = new RoomManagementService();
@@ -55,7 +75,8 @@ public class Main {
             System.out.println("1. Customer Portal");
             System.out.println("2. Staff Portal");
             System.out.println("3. Admin Portal");
-            System.out.println("4. Exit");
+            System.out.println("4. Database Inspector (View All Database Inputs & Tables)");
+            System.out.println("5. Exit");
             int choice = readIntChoice(sc);
             switch (choice) {
                 case 1:
@@ -68,11 +89,14 @@ public class Main {
                     AdminPortal.start(sc);
                     break;
                 case 4:
+                    com.hotel.ui.DatabaseInspectorCLI.start(sc);
+                    break;
+                case 5:
                     exit = true;
                     System.out.println("Thank you for using Hotel Reservation System. Goodbye!");
                     break;
                 default:
-                    System.out.println("Invalid choice. Please enter 1-4.");
+                    System.out.println("Invalid choice. Please enter 1-5.");
                     break;
             }
         }

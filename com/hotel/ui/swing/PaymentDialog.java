@@ -17,6 +17,7 @@ import java.awt.Window;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
@@ -66,7 +67,7 @@ public class PaymentDialog extends JDialog {
     }
 
     private void initUI() {
-        // Header
+
         JPanel header = new JPanel(new BorderLayout());
         header.setBackground(UIStyle.COLOR_PRIMARY_DARK);
         header.setBorder(new EmptyBorder(16, 20, 16, 20));
@@ -83,7 +84,6 @@ public class PaymentDialog extends JDialog {
         header.add(subLbl, BorderLayout.SOUTH);
         add(header, BorderLayout.NORTH);
 
-        // Body Content
         JPanel body = new JPanel();
         body.setLayout(new GridBagLayout());
         body.setOpaque(false);
@@ -95,7 +95,6 @@ public class PaymentDialog extends JDialog {
         gbc.weightx = 1.0;
         gbc.insets = new Insets(0, 0, 14, 0);
 
-        // 1. Reservation Summary Card
         JPanel summaryCard = UIStyle.createCardPanel();
         summaryCard.setLayout(new GridBagLayout());
         GridBagConstraints sGbc = new GridBagConstraints();
@@ -113,12 +112,11 @@ public class PaymentDialog extends JDialog {
 
         addSummaryRow(summaryCard, sGbc, 0, "Guest:", guestName, "Room:", roomStr);
         addSummaryRow(summaryCard, sGbc, 1, "Check-In:", String.valueOf(reservation.getCheckInDate()), "Check-Out:", String.valueOf(reservation.getCheckOutDate()));
-        addSummaryRow(summaryCard, sGbc, 2, "Nights:", nights + " night(s)", "Total Amount:", "$" + String.format("%.2f", reservation.getTotalAmount()));
+        addSummaryRow(summaryCard, sGbc, 2, "Nights:", nights + " night(s)", "Total Amount:", "₹" + String.format("%.2f", reservation.getTotalAmount()));
 
         gbc.gridy = 0;
         body.add(summaryCard, gbc);
 
-        // 2. Payment Method Selector Card
         JPanel methodSelectorCard = UIStyle.createCardPanel();
         methodSelectorCard.setLayout(new BorderLayout(8, 8));
 
@@ -154,12 +152,10 @@ public class PaymentDialog extends JDialog {
         gbc.gridy = 1;
         body.add(methodSelectorCard, gbc);
 
-        // 3. Dynamic Payment Details Card
         methodCardLayout = new CardLayout();
         methodCards = UIStyle.createCardPanel();
         methodCards.setLayout(methodCardLayout);
 
-        // UPI Panel
         JPanel upiPanel = new JPanel(new GridBagLayout());
         upiPanel.setOpaque(false);
         GridBagConstraints uGbc = new GridBagConstraints();
@@ -177,7 +173,6 @@ public class PaymentDialog extends JDialog {
         upiHelp.setForeground(UIStyle.COLOR_TEXT_MUTED);
         upiPanel.add(upiHelp, uGbc);
 
-        // Card Panel
         JPanel cardPanel = new JPanel(new GridBagLayout());
         cardPanel.setOpaque(false);
         GridBagConstraints cGbc = new GridBagConstraints();
@@ -212,7 +207,6 @@ public class PaymentDialog extends JDialog {
         tfCardCvv.setText("789");
         cardPanel.add(tfCardCvv, cGbc);
 
-        // Cash Panel
         JPanel cashPanel = new JPanel(new BorderLayout(8, 8));
         cashPanel.setOpaque(false);
         JLabel cashLbl = new JLabel("<html><b>Front Desk Cash Collection:</b><br/>"
@@ -235,7 +229,6 @@ public class PaymentDialog extends JDialog {
 
         add(new JScrollPane(body), BorderLayout.CENTER);
 
-        // Footer Actions
         JPanel footer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 14, 14));
         footer.setBackground(Color.WHITE);
         footer.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, UIStyle.COLOR_BORDER));
@@ -303,27 +296,29 @@ public class PaymentDialog extends JDialog {
             detail = "Counter Cash Collection";
         }
 
-        // 1. Polymorphically create payment
         Payment payment = PaymentService.createPendingPayment(reservation, method, detail);
         if (payment == null) {
             JOptionPane.showMessageDialog(this, "Failed to create payment record.", "Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
 
-        // 2. Confirm payment & reservation
         boolean confirmed = ReservationService.confirmReservation(reservation.getReservationId());
         if (!confirmed) {
-            // Even if staff approval is required in legacy flow, mark reservation confirmed directly for guest checkout
+
             payment.confirmPayment();
             PaymentService.getPaymentRepository().update(payment);
             reservation.confirmBooking();
             ReservationService.getReservationRepository().update(reservation);
             if (reservation.getRoom() != null) {
-                com.hotel.service.RoomManagementService.updateStatus(reservation.getRoom().getRoomNo(), "Booked");
+                LocalDate today = LocalDate.now();
+                if (reservation.getCheckInDate() != null && !reservation.getCheckInDate().isAfter(today) && reservation.getCheckOutDate().isAfter(today)) {
+                    com.hotel.service.RoomManagementService.updateStatus(reservation.getRoom().getRoomNo(), "Booked");
+                } else {
+                    com.hotel.service.RoomManagementService.updateStatus(reservation.getRoom().getRoomNo(), "Available");
+                }
             }
         }
 
-        // 3. Show Itemized Bill Receipt Dialog
         showReceiptDialog(payment);
     }
 
@@ -418,14 +413,14 @@ public class PaymentDialog extends JDialog {
         sb.append("Check-In Date  : ").append(res != null ? res.getCheckInDate() : "N/A").append("\n");
         sb.append("Check-Out Date : ").append(res != null ? res.getCheckOutDate() : "N/A").append("\n");
         sb.append("Duration       : ").append(nights).append(" night(s)\n");
-        sb.append("Nightly Tariff : $").append(String.format("%.2f", rate)).append("\n");
+        sb.append("Nightly Tariff : ₹").append(String.format("%.2f", rate)).append("\n");
         sb.append("---------------------------------------------------------\n");
         sb.append("ITEMIZED CHARGES:\n");
         sb.append(String.format(" %-30s %10s %10s\n", "Description", "Qty", "Amount"));
-        sb.append(String.format(" %-30s %10d $%9.2f\n", roomType + " Room Stay", nights, nights * rate));
-        sb.append(String.format(" %-30s %10s $%9.2f\n", "Service & Maintenance (0%)", "Included", 0.0));
+        sb.append(String.format(" %-30s %10d ₹%9.2f\n", roomType + " Room Stay", nights, nights * rate));
+        sb.append(String.format(" %-30s %10s ₹%9.2f\n", "Service & Maintenance (0%)", "Included", 0.0));
         sb.append("---------------------------------------------------------\n");
-        sb.append(String.format(" TOTAL AMOUNT  : $%39.2f\n", payment.getAmount()));
+        sb.append(String.format(" TOTAL AMOUNT  : ₹%39.2f\n", payment.getAmount()));
         sb.append(" Payment Method: ").append(payment.getPaymentMethod()).append("\n");
         sb.append(" Payment Status: ").append(payment.getPaymentStatus()).append(" (CONFIRMED)\n");
         sb.append("=========================================================\n");

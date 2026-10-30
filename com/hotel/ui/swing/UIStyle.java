@@ -24,22 +24,20 @@ import javax.swing.table.JTableHeader;
 
 public class UIStyle {
 
-    // Color Palette
-    public static final Color COLOR_PRIMARY_DARK  = new Color(0x1E, 0x29, 0x3B); // Slate/Navy #1E293B
+    public static final Color COLOR_PRIMARY_DARK  = new Color(0x1E, 0x29, 0x3B);
     public static final Color COLOR_SIDEBAR_HOVER = new Color(0x33, 0x41, 0x55);
-    public static final Color COLOR_ACCENT        = new Color(0x4F, 0x46, 0xE5); // Indigo #4F46E5
+    public static final Color COLOR_ACCENT        = new Color(0x4F, 0x46, 0xE5);
     public static final Color COLOR_ACCENT_HOVER  = new Color(0x43, 0x38, 0xCA);
-    public static final Color COLOR_CYAN          = new Color(0x0E, 0xA5, 0xE9); // Cyan #0EA5E9
-    public static final Color COLOR_BG            = new Color(0xF8, 0xFA, 0xFC); // Light Slate #F8FAFC
+    public static final Color COLOR_CYAN          = new Color(0x0E, 0xA5, 0xE9);
+    public static final Color COLOR_BG            = new Color(0xF8, 0xFA, 0xFC);
     public static final Color COLOR_CARD          = Color.WHITE;
     public static final Color COLOR_TEXT_MAIN     = new Color(0x0F, 0x17, 0x2A);
     public static final Color COLOR_TEXT_MUTED    = new Color(0x64, 0x74, 0x8B);
-    public static final Color COLOR_SUCCESS       = new Color(0x16, 0xA3, 0x4A); // Green
-    public static final Color COLOR_DANGER        = new Color(0xDC, 0x26, 0x26); // Red
-    public static final Color COLOR_WARNING       = new Color(0xD9, 0x77, 0x06); // Amber
+    public static final Color COLOR_SUCCESS       = new Color(0x16, 0xA3, 0x4A);
+    public static final Color COLOR_DANGER        = new Color(0xDC, 0x26, 0x26);
+    public static final Color COLOR_WARNING       = new Color(0xD9, 0xA0, 0x06);
     public static final Color COLOR_BORDER        = new Color(0xE2, 0xE8, 0xF0);
 
-    // Fonts
     public static final Font FONT_TITLE    = new Font("Segoe UI", Font.BOLD, 22);
     public static final Font FONT_SUBTITLE = new Font("Segoe UI", Font.BOLD, 16);
     public static final Font FONT_REGULAR  = new Font("Segoe UI", Font.PLAIN, 14);
@@ -59,7 +57,7 @@ public class UIStyle {
             try {
                 UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
             } catch (Exception e) {
-                // Keep default
+
             }
         }
         UIManager.put("defaultFont", FONT_REGULAR);
@@ -108,25 +106,35 @@ public class UIStyle {
     }
 
     public static JTextField createTextField(int columns) {
-        JTextField tf = new JTextField(columns);
+        JTextField tf = new JTextField(columns > 0 ? columns : 15);
         tf.setFont(FONT_REGULAR);
         tf.setBackground(Color.WHITE);
-        tf.setForeground(COLOR_TEXT_MAIN);
+        tf.setForeground(new Color(15, 23, 42));
+        tf.setCaretColor(new Color(15, 23, 42));
+        tf.setEditable(true);
+        tf.setEnabled(true);
+        tf.setPreferredSize(new Dimension(200, 38));
+        tf.setMinimumSize(new Dimension(140, 36));
         tf.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(COLOR_BORDER, 1),
-                new EmptyBorder(6, 10, 6, 10)
+                BorderFactory.createLineBorder(new Color(203, 213, 225), 1),
+                BorderFactory.createEmptyBorder(4, 10, 4, 10)
         ));
         return tf;
     }
 
     public static JPasswordField createPasswordField(int columns) {
-        JPasswordField pf = new JPasswordField(columns);
+        JPasswordField pf = new JPasswordField(columns > 0 ? columns : 15);
         pf.setFont(FONT_REGULAR);
         pf.setBackground(Color.WHITE);
-        pf.setForeground(COLOR_TEXT_MAIN);
+        pf.setForeground(new Color(15, 23, 42));
+        pf.setCaretColor(new Color(15, 23, 42));
+        pf.setEditable(true);
+        pf.setEnabled(true);
+        pf.setPreferredSize(new Dimension(200, 38));
+        pf.setMinimumSize(new Dimension(140, 36));
         pf.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(COLOR_BORDER, 1),
-                new EmptyBorder(6, 10, 6, 10)
+                BorderFactory.createLineBorder(new Color(203, 213, 225), 1),
+                BorderFactory.createEmptyBorder(4, 10, 4, 10)
         ));
         return pf;
     }
@@ -166,7 +174,6 @@ public class UIStyle {
         header.setPreferredSize(new Dimension(0, 36));
         header.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, COLOR_BORDER));
 
-        // Default cell padding
         DefaultTableCellRenderer renderer = new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable tbl, Object value, boolean isSelected, boolean hasFocus, int row, int col) {
@@ -190,11 +197,12 @@ public class UIStyle {
                 String text = value != null ? value.toString() : "";
                 lbl.setText(text);
 
-                if (text.equalsIgnoreCase("Available") || text.equalsIgnoreCase("Confirmed") || text.equalsIgnoreCase("Paid")) {
+                String upper = text.toUpperCase();
+                if (upper.startsWith("AVAILABLE") || upper.equals("CONFIRMED") || upper.equals("PAID") || upper.equals("COMPLETED")) {
                     lbl.setForeground(COLOR_SUCCESS);
-                } else if (text.equalsIgnoreCase("Occupied") || text.equalsIgnoreCase("Cancelled") || text.equalsIgnoreCase("Rejected")) {
+                } else if (upper.contains("BOOKED") || upper.equals("OCCUPIED") || upper.equals("CANCELLED") || upper.equals("REJECTED") || upper.equals("FAILED")) {
                     lbl.setForeground(COLOR_DANGER);
-                } else if (text.equalsIgnoreCase("Maintenance") || text.equalsIgnoreCase("Pending") || text.equalsIgnoreCase("Pending Approval")) {
+                } else if (upper.contains("MAINTENANCE") || upper.contains("PENDING") || upper.equals("REFUNDED")) {
                     lbl.setForeground(COLOR_WARNING);
                 } else {
                     lbl.setForeground(COLOR_TEXT_MAIN);

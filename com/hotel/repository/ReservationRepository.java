@@ -234,6 +234,83 @@ public class ReservationRepository {
         return list;
     }
 
+    public List<Reservation> findActiveReservationsByRoomId(int roomId) {
+        List<RawReservation> rawList = new ArrayList<>();
+        String sql = "SELECT * FROM reservations WHERE room_id = ? " +
+                     "AND UPPER(status) NOT IN ('CANCELLED', 'COMPLETED', 'CHECKED_OUT') " +
+                     "ORDER BY check_in_date ASC";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, roomId);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    rawList.add(new RawReservation(
+                            rs.getInt("reservation_id"),
+                            rs.getInt("customer_id"),
+                            rs.getInt("room_id"),
+                            rs.getString("check_in_date"),
+                            rs.getString("check_out_date"),
+                            rs.getString("status"),
+                            rs.getDouble("total_amount")
+                    ));
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("ReservationRepository.findActiveReservationsByRoomId error: " + e.getMessage());
+        }
+
+        List<Reservation> list = new ArrayList<>();
+        for (RawReservation raw : rawList) {
+            list.add(buildFromRaw(raw));
+        }
+        return list;
+    }
+
+    public boolean isRoomAvailableForDateRange(int roomId, LocalDate reqCheckIn, LocalDate reqCheckOut) {
+        if (reqCheckIn == null || reqCheckOut == null || !reqCheckOut.isAfter(reqCheckIn)) {
+            return false;
+        }
+        List<Reservation> active = findActiveReservationsByRoomId(roomId);
+        for (Reservation res : active) {
+            LocalDate existingCheckIn = res.getCheckInDate();
+            LocalDate existingCheckOut = res.getCheckOutDate();
+            if (existingCheckIn == null || existingCheckOut == null) {
+                continue;
+            }
+            if (reqCheckIn.isBefore(existingCheckOut) && reqCheckOut.isAfter(existingCheckIn)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public Reservation findActiveReservationByRoomId(int roomId) {
+        String sql = "SELECT * FROM reservations WHERE room_id = ? " +
+                     "AND UPPER(status) NOT IN ('CANCELLED', 'COMPLETED', 'CHECKED_OUT') " +
+                     "ORDER BY reservation_id DESC LIMIT 1";
+        RawReservation raw = null;
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, roomId);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    raw = new RawReservation(
+                            rs.getInt("reservation_id"),
+                            rs.getInt("customer_id"),
+                            rs.getInt("room_id"),
+                            rs.getString("check_in_date"),
+                            rs.getString("check_out_date"),
+                            rs.getString("status"),
+                            rs.getDouble("total_amount")
+                    );
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("ReservationRepository.findActiveReservationByRoomId error: " + e.getMessage());
+        }
+        return raw != null ? buildFromRaw(raw) : null;
+    }
+
     private Reservation buildFromRaw(RawReservation raw) {
         Customer cust = customerRepository.getById(raw.custId);
         Room room = roomRepository.getById(raw.roomId);

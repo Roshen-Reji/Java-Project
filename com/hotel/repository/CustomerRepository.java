@@ -134,7 +134,6 @@ public class CustomerRepository {
         String target = normalizePhone(phone);
         if (target.isEmpty()) return null;
 
-        // Fetch all to compare normalized phone formats
         for (Customer c : getAll()) {
             if (c.getPhone() != null && target.equals(normalizePhone(c.getPhone()))) {
                 return c;

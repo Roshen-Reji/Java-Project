@@ -114,6 +114,19 @@ public class PaymentRepository {
         }
     }
 
+    public boolean updatePaymentStatus(int paymentId, String newStatus) {
+        String sql = "UPDATE payments SET payment_status = ? WHERE payment_id = ?";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, newStatus);
+            pstmt.setInt(2, paymentId);
+            return pstmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
     public void delete(int id) {
         String sql = "DELETE FROM payments WHERE payment_id = ?";
         try (Connection conn = DatabaseConnection.getConnection();
@@ -174,7 +187,7 @@ public class PaymentRepository {
         }
 
         if (resId > 0) {
-            // Minimal reservation reference to allow resId lookup
+
             Reservation res = new Reservation(resId, null, null, null, null, "", amount);
             payment.setReservation(res);
         }
