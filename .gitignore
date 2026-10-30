@@ -1,3 +1,20 @@
-*.class
+# Build and compiler output directories
 out/
-*.db
+bin/
+target/
+build/
+
+# Java bytecode
+*.class
+
+# IDE / Editor configuration
+.idea/
+*.iml
+.vscode/
+.settings/
+.classpath
+.project
+
+# OS metadata
+.DS_Store
+Thumbs.db

@@ -1,0 +1,512 @@
+================================================================================
+          HOTEL RESERVATION SYSTEM - COMPLETE PROJECT & OOP GUIDE
+              TAILORED & DIVIDED FOR A 7-MEMBER PROJECT TEAM
+================================================================================
+
+PROJECT OVERVIEW:
+This software is a console-based, industrial-grade Hotel Reservation System
+built in Java applying core Object-Oriented Programming (OOP) paradigms and
+a layered 3-Tier Enterprise Architecture:
+  1. UI Layer (com.hotel.ui)         -> Handles terminal display and user inputs
+  2. Service Layer (com.hotel.service)    -> Business logic and rule enforcement
+  3. Repository Layer (com.hotel.repository) -> In-memory data store / CRUD
+  4. Domain Layer (com.hotel.domain)     -> Core OOP entities and models
+
+--------------------------------------------------------------------------------
+                         QUICK TEAM ROLE ASSIGNMENT TABLE
+--------------------------------------------------------------------------------
+MEMBER 1: System Architecture, Entry Driver & Person-Staff-Admin Hierarchy
+          Files: Main.java, Person.java, HotelStaff.java, Admin.java
+          Key Concepts: Multilevel Inheritance, Constructor Chaining, Overriding.
+
+MEMBER 2: Customer Management, Authentication & Customer Repository
+          Files: Customer.java, AuthenticationCustomerService.java, CustomerRepository.java
+          Key Concepts: Single Inheritance, Regex Validation, Repository Pattern.
+
+MEMBER 3: Room Hierarchy, Availability Engine & Room Management Service
+          Files: Room.java, StandardRoom.java, DeluxeRoom.java, SuiteRoom.java,
+                 RoomManagementService.java, RoomRepository.java
+          Key Concepts: Hierarchical Inheritance, Encapsulation, Factory Logic.
+
+MEMBER 4: Polymorphic Payment Hierarchy, Billing & Payment Gateway
+          Files: Payment.java, UpiPayment.java, CardPayment.java, CashPayment.java,
+                 PaymentGateway.java, PaymentService.java, PaymentRepository.java
+          Key Concepts: Polymorphism, Dynamic Method Dispatch, Data Masking.
+
+MEMBER 5: Reservation Engine & Multi-Entity State Machine
+          Files: Reservation.java, ReservationService.java, ReservationRepository.java
+          Key Concepts: Association/Aggregation, State Pattern, Date Manipulation.
+
+MEMBER 6: Staff Operations, Staff Repository & Staff Portal Interface
+          Files: StaffService.java, StaffRepository.java, StaffPortal.java
+          Key Concepts: Role-Based Operations, Referential Integrity, Safe Input.
+
+MEMBER 7: Customer UI Portal & Powerful Admin Portal
+          Files: CustomerPortal.java, AdminPortal.java
+          Key Concepts: UI Separation, Session State, PIN Security, Robust I/O.
+
+================================================================================
+  MEMBER 1: SYSTEM ARCHITECTURE, ENTRY DRIVER & PERSON-STAFF-ADMIN HIERARCHY
+================================================================================
+Assigned Files:
+  - com/hotel/Main.java
+  - com/hotel/domain/Person.java
+  - com/hotel/domain/HotelStaff.java
+  - com/hotel/domain/Admin.java
+
+1. What Your Part Does:
+   - You are the team lead / architect speaker.
+   - You explain how the application boots up, how initial sample data is seeded,
+     and the top-level User / Person inheritance tree.
+   - You demonstrate how `Person` is extended by `HotelStaff`, which is then
+     extended by `Admin`.
+
+2. Core OOP Concepts in Your Part:
+   A. Multilevel Inheritance:
+      - Class hierarchy: Person -> HotelStaff -> Admin.
+      - `Person` contains universal attributes: id, name, phone, email.
+      - `HotelStaff` adds `role` (e.g., Manager, Receptionist) and staff tasks.
+      - `Admin` inherits everything from `HotelStaff` and `Person`, adding
+        super-user privileges (adding/removing rooms and staff).
+   B. Constructor Chaining (`super` keyword):
+      - In `HotelStaff.java`:
+        public HotelStaff(int staffId, String name, String role, String email, String phone) {
+            super(staffId, name, phone, email); // calls Person constructor
+            this.role = role;
+        }
+      - In `Admin.java`:
+        public Admin(int id, String name, String email, String phone) {
+            super(id, name, "Admin", email, phone); // calls HotelStaff constructor
+        }
+   C. Method Overriding:
+      - `displayDetails()` is defined in `Person`, then overridden in
+        `HotelStaff` (adding `role`), and overridden again in `Admin`
+        (adding "Privileges: Full System Administrator").
+      - Each subclass calls `super.displayDetails()` to reuse the base display.
+   D. Encapsulation:
+      - Attributes use `protected` access so direct subclasses can read/write them
+        cleanly while preventing unauthorized external tampering.
+
+3. Walkthrough of Main.java:
+   - `main(String[] args)`:
+     * Calls `seedData()` to pre-populate 3 staff/admin records (Alice, Bob, Master Admin)
+       and 5 initial hotel rooms (Standard, Deluxe, Suite).
+     * Runs a persistent `while (!exit)` game-loop displaying the 3 portals.
+     * Uses safe input parsing with `readIntChoice(sc)` that checks `sc.hasNextLine()`
+       so the program never crashes unexpectedly on stream termination.
+
+4. How Your Part Connects to Other Members:
+   - You provide the foundation (`Person`) that Member 2 (`Customer`) also extends.
+   - You provide `Admin` and `HotelStaff` models that Members 6 and 7 use in
+     their portals.
+   - Your `Main.java` directs users to Member 6's `StaffPortal`, Member 7's
+     `CustomerPortal`, and Member 7's `AdminPortal`.
+
+5. Sample Viva Questions & Answers:
+   Q: Why did you use Multilevel Inheritance for Admin instead of Multiple Inheritance?
+   A: Java does not support multiple inheritance with classes to avoid the Diamond
+      Problem. Multilevel inheritance (`Person` -> `HotelStaff` -> `Admin`) is
+      the natural real-world modeling because an Administrator is a specialized
+      Staff member, who in turn is a Person.
+   Q: What is the purpose of `super(...)` in constructors?
+   A: It explicitly invokes the constructor of the immediate superclass, ensuring
+      inherited state (like `id` and `name`) is properly initialized before the
+      subclass constructor executes.
+
+================================================================================
+  MEMBER 2: CUSTOMER MANAGEMENT, AUTHENTICATION & CUSTOMER REPOSITORY
+================================================================================
+Assigned Files:
+  - com/hotel/domain/Customer.java
+  - com/hotel/service/AuthenticationCustomerService.java
+  - com/hotel/repository/CustomerRepository.java
+
+1. What Your Part Does:
+   - You represent the Guest/Customer identity layer.
+   - You manage customer registration, email/phone validation, login authentication,
+     and customer data storage.
+
+2. Core OOP Concepts in Your Part:
+   A. Single Inheritance:
+      - `Customer extends Person`: reuses `id`, `name`, `phone`, `email` from
+        `Person`, while introducing customer-specific `address`.
+   B. Encapsulation & Information Hiding:
+      - `address` is marked `private` inside `Customer` with `getAddress()` and
+        `setAddress(...)` accessors.
+   C. Repository Pattern (Data Abstraction):
+      - `CustomerRepository` encapsulates the storage logic inside a private
+        `Map<Integer, Customer> store = new HashMap<>()`.
+      - High-level services never deal with HashMaps directly; they call clean
+        CRUD operations (`add`, `getById`, `getAll`, `update`, `delete`).
+   D. Auto-increment Primary Key Generation:
+      - `CustomerRepository` maintains `private int nextId = 1;` so each customer
+        is automatically assigned a unique, immutable ID.
+
+3. Walkthrough of Business Logic:
+   - `isValidEmail(email)`: Uses standard regex pattern matching to verify
+     format (e.g. `user@domain.com`).
+   - `isValidPhone(phone)` & `normalizePhone(phone)`:
+     * Accepts phone numbers between 7 and 15 digits.
+     * Cleans up spaces, hyphens, and parentheses.
+     * Phone matching allows flexible customer lookup (matching regardless of
+       country code prefixes or punctuation).
+   - Duplicate Prevention:
+     * `registerCustomer` checks `findByEmail(...)` and `findByPhone(...)`
+       before saving to prevent duplicate accounts.
+   - Referential Integrity Protection:
+     * `deleteCustomer(id)` verifies via `ReservationService` whether the customer
+       has any active or pending bookings. If yes, deletion is blocked!
+
+4. How Your Part Connects to Other Members:
+   - Inherits from Member 1's `Person`.
+   - Member 5's `Reservation` holds a reference to your `Customer` object.
+   - Member 7's `CustomerPortal` uses your `AuthenticationCustomerService` for
+     registration and login sessions.
+
+5. Sample Viva Questions & Answers:
+   Q: Why use a Repository layer instead of managing customer lists in CustomerPortal?
+   A: To respect the Single Responsibility Principle and Separation of Concerns.
+      The UI should only render and receive inputs, while the repository handles
+      persistence. If we swap the HashMap for an SQL database later, the UI code
+      remains completely unchanged.
+   Q: How does `Customer` reuse code from `Person`?
+   A: Via `super(customerId, name, phone, email)` in its constructor and calling
+      `super.displayDetails()` inside its `displayDetails()` override.
+
+================================================================================
+  MEMBER 3: ROOM HIERARCHY, AVAILABILITY ENGINE & ROOM MANAGEMENT SERVICE
+================================================================================
+Assigned Files:
+  - com/hotel/domain/Room.java
+  - com/hotel/domain/StandardRoom.java
+  - com/hotel/domain/DeluxeRoom.java
+  - com/hotel/domain/SuiteRoom.java
+  - com/hotel/service/RoomManagementService.java
+  - com/hotel/repository/RoomRepository.java
+
+1. What Your Part Does:
+   - You own the hotel inventory: the rooms, room types, pricing, availability,
+     and room lifecycle (Available -> Pending -> Booked -> Maintenance).
+
+2. Core OOP Concepts in Your Part:
+   A. Hierarchical Inheritance:
+      - One base class (`Room`) has multiple direct subclasses:
+        * `StandardRoom extends Room`
+        * `DeluxeRoom extends Room`
+        * `SuiteRoom extends Room`
+      - Each subclass constructor automatically passes its specific room type string
+        to `super(roomNo, "Deluxe", price, status, description)`.
+   B. Encapsulation:
+      - Room properties (`roomNo`, `roomType`, `price`, `status`, `description`)
+        are protected/private with getters and setters.
+      - Status check is encapsulated inside `checkAvailability()`:
+        public boolean checkAvailability() {
+            return "Available".equalsIgnoreCase(status);
+        }
+   C. Factory-Style Object Instantiation:
+      - Inside `RoomManagementService.addRoom(...)`:
+        Based on the `roomType` parameter ("Standard", "Deluxe", "Suite"),
+        it instantiates the appropriate subclass polymorphically.
+
+3. Walkthrough of Business Logic:
+   - Price & Room Number Validation:
+     * Room numbers and prices must strictly be greater than zero (`> 0`).
+     * Prevents duplicate room numbers in `RoomRepository`.
+   - Safe Room Deletion:
+     * In `deleteRoom(roomNo)`, before deleting from repository, it inspects
+       all reservations. If the room has an active or pending reservation,
+       the system refuses deletion to preserve transaction history.
+   - Room State Lifecycle:
+     * "Available": ready for guest booking.
+     * "Pending": held while guest payment is awaiting Staff/Admin confirmation.
+     * "Booked": payment confirmed, guest scheduled.
+     * "Maintenance": room taken out of service for repairs.
+
+4. How Your Part Connects to Other Members:
+   - Member 5's `Reservation` links directly to your `Room` object.
+   - Member 6 (`StaffPortal`) and Member 7 (`AdminPortal`) call your
+     `RoomManagementService` to view, add, update, and manage room statuses.
+
+5. Sample Viva Questions & Answers:
+   Q: Why create subclasses like DeluxeRoom and SuiteRoom instead of just a String in Room?
+   A: It adheres to OOP extensibility (Open/Closed Principle). In the future,
+      `SuiteRoom` can have unique attributes (e.g., jacuzzi, complimentary breakfast,
+      extra guest capacity) without modifying the base `Room` class.
+   Q: How is room availability controlled to prevent double-booking?
+   A: When a booking request is made, `ReservationService` changes room status
+      to "Pending". When confirmed, it becomes "Booked". `checkAvailability()`
+      returns true only if the status equals "Available".
+
+================================================================================
+  MEMBER 4: POLYMORPHIC PAYMENT HIERARCHY, BILLING & PAYMENT GATEWAY
+================================================================================
+Assigned Files:
+  - com/hotel/domain/Payment.java
+  - com/hotel/domain/UpiPayment.java
+  - com/hotel/domain/CardPayment.java
+  - com/hotel/domain/CashPayment.java
+  - com/hotel/service/PaymentGateway.java
+  - com/hotel/service/PaymentService.java
+  - com/hotel/repository/PaymentRepository.java
+
+1. What Your Part Does:
+   - You own the money and billing engine!
+   - You handle UPI, Credit/Debit Card, and Counter Cash payments, invoice
+     generation, credit card security masking, and the simulated Payment Gateway.
+
+2. Core OOP Concepts in Your Part:
+   A. Polymorphism & Dynamic Method Dispatch:
+      - Base class: `Payment` defines `generateBill()`.
+      - Subclasses override `generateBill()`:
+        * `UpiPayment`: Prints UPI ID (e.g., `student@upi`).
+        * `CardPayment`: Prints Cardholder Name and securely masked Card Number.
+        * `CashPayment`: Prints counter collection notes.
+      - When `PaymentService.generateBill(reservation)` is called, the JVM
+        dynamically executes the correct subclass's `generateBill()` at runtime!
+   B. Data Security & Information Hiding:
+      - In `CardPayment.java`, full card numbers are never exposed on bills:
+        String masked = cardNumber.length() > 4 ?
+            "**** **** **** " + cardNumber.substring(cardNumber.length() - 4) : cardNumber;
+   C. Simulated External Service Integration (PaymentGateway):
+      - `PaymentGateway.charge(amount, method)` creates unique transaction IDs
+        (`TXN` + timestamp) simulating bank authorization.
+      - `PaymentGateway.refund(amount)` generates refund IDs (`REF` + timestamp).
+
+3. Walkthrough of Payment Lifecycle:
+   - Step 1: Customer submits reservation -> `PaymentService.createPendingPayment()`
+     creates payment in status "Pending Confirmation".
+   - Step 2: Hotel Staff / Admin approves -> `confirmPaymentForReservation()` calls
+     `PaymentGateway.charge()`. On success, payment status becomes "Paid", and
+     `paymentDate` is stamped with `LocalDate.now()`.
+   - Step 3: Cancellation -> `refundPayment()` automatically contacts
+     `PaymentGateway.refund()` and sets status to "Refunded".
+
+4. How Your Part Connects to Other Members:
+   - Member 5's `Reservation` holds a reference to your `Payment` object.
+   - Member 2's `Customer` and Member 7's `CustomerPortal` display itemized
+     bills generated by your `generateBill()` method.
+
+5. Sample Viva Questions & Answers:
+   Q: What is Dynamic Method Dispatch and how is it used in your payment module?
+   A: Dynamic Method Dispatch is runtime polymorphism where a call to an overridden
+      method is resolved at runtime rather than compile time. In our code,
+      `reservation.getPayment().generateBill()` calls the specific version
+      (`CardPayment`, `UpiPayment`, or `CashPayment`) depending on the actual
+      object instance at runtime.
+   Q: Why is payment processing separated into PaymentGateway and PaymentService?
+   A: `PaymentService` manages business workflow and repositories, whereas
+      `PaymentGateway` acts as an adapter/proxy simulating communication with an
+      external bank API.
+
+================================================================================
+  MEMBER 5: RESERVATION ENGINE & MULTI-ENTITY STATE MACHINE
+================================================================================
+Assigned Files:
+  - com/hotel/domain/Reservation.java
+  - com/hotel/service/ReservationService.java
+  - com/hotel/repository/ReservationRepository.java
+
+1. What Your Part Does:
+   - You are the central orchestrator!
+   - You bind Customer, Room, and Payment together into a cohesive booking.
+   - You manage the reservation state machine and compute dates and pricing.
+
+2. Core OOP Concepts in Your Part:
+   A. Association & Aggregation ("HAS-A" Relationship):
+      - `Reservation` is NOT an inheritance subclass; it aggregates 3 entities:
+        * Reservation HAS-A Customer (`Customer customer`)
+        * Reservation HAS-A Room (`Room room`)
+        * Reservation HAS-A Payment (`Payment payment`)
+   B. Date Calculation using java.time API:
+      - Uses modern Java 8+ `LocalDate` and `ChronoUnit.DAYS`:
+        long nights = ChronoUnit.DAYS.between(checkIn, checkOut);
+        double totalAmount = nights * room.getPrice();
+      - Strict validation: Check-out date must strictly be AFTER check-in date.
+   C. Multi-Entity State Transition Coordination:
+      - A change in Reservation state triggers synchronized updates across
+        other domains:
+        * When Booking is Created:
+          Reservation = "Pending Approval" | Room = "Pending" | Payment = "Pending Confirmation"
+        * When Approved (Staff/Admin):
+          Reservation = "Confirmed" | Room = "Booked" | Payment = "Paid"
+        * When Cancelled:
+          Reservation = "Cancelled" | Room = "Available" | Payment = "Refunded"
+
+3. Walkthrough of ReservationService Methods:
+   - `createReservation(customer, room, checkIn, checkOut)`:
+     * Validates non-null parameters, date ordering, and room availability.
+     * Computes nights * rate = total.
+     * Updates room status to "Pending" to prevent double-booking.
+   - `confirmReservation(reservationId)`:
+     * Validates payment confirmation via `PaymentService`.
+     * Marks reservation as "Confirmed" and room as "Booked".
+   - `rejectReservation(reservationId)`:
+     * Only allows rejecting pending bookings (guards against rejecting already
+       confirmed or cancelled ones).
+     * Releases room back to "Available" and marks payment "Rejected".
+   - `cancelReservation(reservationId)`:
+     * Checks if already cancelled.
+     * Releases room to "Available".
+     * Triggers refund if payment was "Paid", or cancels pending payment.
+
+4. How Your Part Connects to Other Members:
+   - You unite Member 2's `Customer`, Member 3's `Room`, and Member 4's `Payment`.
+   - Your `ReservationService` is the primary engine called by Member 6's
+     `StaffPortal` and Member 7's `CustomerPortal` / `AdminPortal`.
+
+5. Sample Viva Questions & Answers:
+   Q: What is the difference between Inheritance ("IS-A") and Aggregation ("HAS-A") in this project?
+   A: `Customer IS-A Person` (Inheritance) because a customer shares the fundamental
+      identity of a person. However, `Reservation HAS-A Room` (Aggregation) because
+      a reservation contains a room without being a room itself. Aggregation provides
+      higher flexibility and loose coupling.
+   Q: How do you prevent invalid date bookings?
+   A: We use `checkOut.isAfter(checkIn)`. If check-out is before or equal to
+      check-in, the service rejects the request immediately.
+
+================================================================================
+  MEMBER 6: STAFF OPERATIONS, STAFF REPOSITORY & STAFF PORTAL INTERFACE
+================================================================================
+Assigned Files:
+  - com/hotel/service/StaffService.java
+  - com/hotel/repository/StaffRepository.java
+  - com/hotel/ui/StaffPortal.java
+
+1. What Your Part Does:
+   - You represent the hotel front-desk and operations management team.
+   - You handle the Staff Portal interface, viewing pending customer requests,
+     confirming/rejecting bookings, updating room maintenance details, and
+     staff record storage.
+
+2. Core OOP Concepts in Your Part:
+   A. Role-Based Access Control (RBAC):
+      - Front-desk staff have operational powers (confirming reservations,
+        viewing customers and rooms), but CANNOT delete rooms or alter staff accounts
+        (which is reserved strictly for Admin).
+   B. Data Integrity & Safeguards:
+      - `StaffService.deleteStaff(id)` enforces protection of the root system
+        admin: prevents deleting Master Admin (`ID: 999`).
+   C. User Interface Separation of Concerns:
+      - `StaffPortal` is an independent UI controller. It contains zero SQL or
+        raw storage code; it queries `StaffService`, `RoomManagementService`, and
+        `ReservationService`.
+
+3. Walkthrough of StaffPortal Features:
+   - Option 1: View all rooms with rates and live statuses.
+   - Option 2: Update room details (change pricing, move room into "Maintenance"
+     or back to "Available").
+   - Option 3: View pending reservations placed by registered customers.
+   - Option 4: Review and Confirm/Reject pending reservation:
+     * Prompts for reservation ID.
+     * Verifies that the reservation is actually pending before offering choices.
+     * Option 1 invokes `ReservationService.confirmReservation(...)`.
+     * Option 2 invokes `ReservationService.rejectReservation(...)`.
+   - Option 5 & 6: View complete list of reservations and registered customers.
+   - Option 7: Front-desk reservation cancellation on behalf of guest.
+
+4. How Your Part Connects to Other Members:
+   - Operates on Member 1's `HotelStaff` objects.
+   - Interacts with Member 3's `RoomManagementService` and Member 5's
+     `ReservationService`.
+   - Accessible via Member 1's `Main.java` menu.
+
+5. Sample Viva Questions & Answers:
+   Q: Why should Staff not have access to Admin functions?
+   A: Principle of Least Privilege. Front-desk staff only need operational access
+      to check guests in and confirm payments. Allowing staff to delete rooms or
+      other staff accounts would create severe business security risks.
+   Q: How does StaffPortal handle invalid inputs?
+   A: It wraps input parsing in loop-guarded methods like `readIntChoice` and
+      `readDoubleOrKeep` that catch `NumberFormatException` and check
+      `sc.hasNextLine()`, re-prompting the user cleanly without crashing.
+
+================================================================================
+  MEMBER 7: CUSTOMER UI PORTAL & POWERFUL ADMIN PORTAL
+================================================================================
+Assigned Files:
+  - com/hotel/ui/CustomerPortal.java
+  - com/hotel/ui/AdminPortal.java
+
+1. What Your Part Does:
+   - You are the UI/UX and Security specialist!
+   - You built the interactive Customer Experience (registering, booking rooms,
+     paying via UPI/Card/Cash, inspecting itemized bills) AND the Administrator
+     Console (PIN protected, complete system control).
+
+2. Core OOP Concepts in Your Part:
+   A. Session State Tracking:
+      - In `CustomerPortal.java`, tracks the logged-in user with:
+        `Customer current = null;`
+      - UI dynamically adapts: if `current == null`, menu shows "Login / Register";
+        if logged in, shows "Logged in as: Name | Logout" and enables booking.
+      - Feature guards: `requireLogin(current)` prevents unauthorized guests
+        from booking or cancelling without logging in.
+   B. Authentication & Security Gate:
+      - `AdminPortal.start(sc)` requires an Admin PIN (default: `1234` or `admin`).
+      - Access is denied immediately upon incorrect entry.
+   C. Robust Console I/O and Exception Handling:
+      - All inputs utilize scanner safety checks (`sc.hasNextLine()`) to avoid
+        `NoSuchElementException` when running scripts or piped input.
+      - Menu options are bounded with loops so out-of-range choices don't break
+        application flow.
+
+3. Walkthrough of Portals:
+   - Customer Portal:
+     * Full onboarding flow: Register -> Login -> Browse Available Rooms.
+     * Room Booking Wizard: Selects Room No -> Enters Check-in/Check-out dates ->
+       Calculates nights and bill -> Chooses payment method (UPI / Card / Cash) ->
+       Submits reservation in "Pending Approval" state.
+     * View Bookings: Displays booking status, itemized invoice with nights,
+       nightly rates, total amount, and payment details.
+   - Admin Portal:
+     * View/Add/Update/Delete Rooms (with positive price validation).
+     * View/Add/Delete Staff Members (Manager, Receptionist, Housekeeping).
+     * View/Delete Customers (with active reservation safeguards).
+     * Inspect all system reservations and all financial payment transactions.
+
+4. How Your Part Connects to Other Members:
+   - You integrate the entire system for the end user!
+   - You utilize Member 2's Auth Service, Member 3's Room Service, Member 4's
+     Billing, Member 5's Reservation Service, and Member 6's Staff Service.
+
+5. Sample Viva Questions & Answers:
+   Q: How do you maintain user login state in a console-based application?
+   A: We keep a reference variable `Customer current` inside the portal loop.
+      When the user logs in, `current` points to the authenticated `Customer`
+      object. When logging out, `current` is reset to `null`.
+   Q: What happens if an admin attempts to add a room with a negative price?
+   A: Our `readDoublePrompt` and `RoomManagementService.addRoom` methods check
+      `if (price <= 0)` and reject it with an error message, preserving system integrity.
+
+================================================================================
+                    SUMMARY OF OOP CONCEPTS USED ACROSS THE PROJECT
+================================================================================
+1. INHERITANCE:
+   - Multilevel: Person -> HotelStaff -> Admin (Member 1)
+   - Single: Person -> Customer (Member 2)
+   - Hierarchical: Room -> StandardRoom, DeluxeRoom, SuiteRoom (Member 3)
+   - Hierarchical: Payment -> UpiPayment, CardPayment, CashPayment (Member 4)
+
+2. POLYMORPHISM:
+   - Method Overriding: `displayDetails()` in Person, HotelStaff, Admin, Customer.
+   - Dynamic Method Dispatch: `generateBill()` in Payment, UpiPayment,
+     CardPayment, CashPayment.
+
+3. ENCAPSULATION:
+   - Private and protected data fields with public accessors and mutators.
+   - State transition methods (`confirmBooking()`, `cancelBooking()`, `updateStatus()`).
+
+4. ABSTRACTION & MODULARITY:
+   - Repository Pattern separates storage mechanisms from business rules.
+   - UI Portals separate screen presentation from service logic.
+
+5. ASSOCIATION & AGGREGATION:
+   - `Reservation` aggregates `Customer`, `Room`, and `Payment` ("HAS-A" structure).
+
+6. DEFENSIVE PROGRAMMING & EXCEPTION HANDLING:
+   - Scanner input stream validation (`sc.hasNextLine()`) preventing crashes.
+   - Try-catch parsing for numeric input.
+   - Business rule safeguards preventing deletion of booked rooms or active customers.
+================================================================================
+                        END OF GROUP STUDY GUIDE
+================================================================================
