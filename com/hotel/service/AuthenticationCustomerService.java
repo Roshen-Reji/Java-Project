@@ -1,6 +1,7 @@
 package com.hotel.service;
 
 import com.hotel.domain.Customer;
+import com.hotel.domain.Reservation;
 import com.hotel.repository.CustomerRepository;
 import java.util.List;
 
@@ -100,6 +101,13 @@ public class AuthenticationCustomerService {
         if (customerRepository.getById(customerId) == null) {
             System.out.println("Error: Customer ID " + customerId + " not found.");
             return false;
+        }
+        List<Reservation> resList = ReservationService.getReservationsForCustomer(customerId);
+        for (Reservation r : resList) {
+            if ("Confirmed".equalsIgnoreCase(r.getStatus()) || "Pending Approval".equalsIgnoreCase(r.getStatus()) || "Pending".equalsIgnoreCase(r.getStatus())) {
+                System.out.println("Error: Cannot delete Customer ID " + customerId + " because they have an active/pending reservation (#" + r.getReservationId() + ").");
+                return false;
+            }
         }
         customerRepository.delete(customerId);
         System.out.println("Customer ID " + customerId + " deleted successfully.");

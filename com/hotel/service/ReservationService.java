@@ -108,6 +108,14 @@ public class ReservationService {
             System.out.println("Error: Reservation #" + reservationId + " not found.");
             return false;
         }
+        if ("Cancelled".equalsIgnoreCase(r.getStatus())) {
+            System.out.println("Error: Reservation #" + reservationId + " is already cancelled.");
+            return false;
+        }
+        if ("Confirmed".equalsIgnoreCase(r.getStatus())) {
+            System.out.println("Error: Reservation #" + reservationId + " is already confirmed. Use cancel instead.");
+            return false;
+        }
         r.cancelBooking();
         if (r.getRoom() != null) {
             RoomManagementService.updateStatus(r.getRoom().getRoomNo(), "Available");
