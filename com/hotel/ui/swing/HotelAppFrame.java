@@ -45,7 +45,6 @@ public class HotelAppFrame extends JFrame {
         cardLayout = new CardLayout();
         rootPanel = new JPanel(cardLayout);
 
-        // Instantiate panels with dependency injection
         authPanel = new WelcomeAuthPanel(this, authService, staffService);
         customerPanel = new CustomerDashboardPanel(this, authService, roomService, resService, payService);
         staffPanel = new StaffDashboardPanel(this, authService, roomService, resService);

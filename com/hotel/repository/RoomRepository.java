@@ -115,7 +115,7 @@ public class RoomRepository {
 
     public List<Room> findAvailableRooms() {
         List<Room> result = new ArrayList<>();
-        String sql = "SELECT * FROM rooms WHERE LOWER(status) = 'available' ORDER BY room_id ASC";
+        String sql = "SELECT * FROM rooms WHERE LOWER(status) != 'maintenance' ORDER BY room_id ASC";
         try (Connection conn = DatabaseConnection.getConnection();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {

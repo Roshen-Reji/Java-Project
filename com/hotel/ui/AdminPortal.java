@@ -49,7 +49,8 @@ public class AdminPortal {
             System.out.println("12. Confirm pending payment & reservation");
             System.out.println("13. Cancel a reservation");
             System.out.println("14. View all payments");
-            System.out.println("15. Back to Main Menu");
+            System.out.println("15. Database Inspector (View All Database Tables & Inputs)");
+            System.out.println("16. Back to Main Menu");
             int choice = readIntChoice(sc);
             switch (choice) {
                 case 1:
@@ -95,10 +96,13 @@ public class AdminPortal {
                     handleViewPayments();
                     break;
                 case 15:
+                    DatabaseInspectorCLI.start(sc);
+                    break;
+                case 16:
                     back = true;
                     break;
                 default:
-                    System.out.println("Invalid choice. Please enter 1-15.");
+                    System.out.println("Invalid choice. Please enter 1-16.");
                     break;
             }
         }

@@ -12,7 +12,6 @@ public class DatabaseInitializer {
         try (Connection conn = DatabaseConnection.getConnection();
              Statement stmt = conn.createStatement()) {
 
-            // 1. customers table
             stmt.executeUpdate("CREATE TABLE IF NOT EXISTS customers ("
                     + "customer_id INTEGER PRIMARY KEY,"
                     + "name VARCHAR(100) NOT NULL,"
@@ -22,7 +21,6 @@ public class DatabaseInitializer {
                     + "password VARCHAR(100)"
                     + ");");
 
-            // 2. staff table
             stmt.executeUpdate("CREATE TABLE IF NOT EXISTS staff ("
                     + "staff_id INTEGER PRIMARY KEY,"
                     + "name VARCHAR(100) NOT NULL,"
@@ -32,7 +30,6 @@ public class DatabaseInitializer {
                     + "password VARCHAR(100)"
                     + ");");
 
-            // 3. rooms table
             stmt.executeUpdate("CREATE TABLE IF NOT EXISTS rooms ("
                     + "room_id INTEGER PRIMARY KEY,"
                     + "room_type VARCHAR(50) NOT NULL,"
@@ -41,7 +38,6 @@ public class DatabaseInitializer {
                     + "description VARCHAR(255)"
                     + ");");
 
-            // 4. reservations table
             stmt.executeUpdate("CREATE TABLE IF NOT EXISTS reservations ("
                     + "reservation_id INTEGER PRIMARY KEY,"
                     + "customer_id INT NOT NULL,"
@@ -54,7 +50,6 @@ public class DatabaseInitializer {
                     + "FOREIGN KEY (room_id) REFERENCES rooms(room_id)"
                     + ");");
 
-            // 5. payments table
             stmt.executeUpdate("CREATE TABLE IF NOT EXISTS payments ("
                     + "payment_id INTEGER PRIMARY KEY,"
                     + "reservation_id INT,"
@@ -75,19 +70,19 @@ public class DatabaseInitializer {
     }
 
     private static void seedInitialData(Connection conn) throws SQLException {
-        // Check and seed rooms
+
         try (Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery("SELECT COUNT(*) AS count FROM rooms")) {
             if (rs.next() && rs.getInt("count") == 0) {
                 String insertRoom = "INSERT INTO rooms (room_id, room_type, price, status, description) VALUES (?, ?, ?, ?, ?)";
                 try (PreparedStatement pstmt = conn.prepareStatement(insertRoom)) {
-                    // 2 Standard rooms
+
                     addRoomBatch(pstmt, 101, "STANDARD", 50.0, "AVAILABLE", "Cozy standard room with single bed");
                     addRoomBatch(pstmt, 102, "STANDARD", 60.0, "AVAILABLE", "Standard room with twin beds & garden view");
-                    // 2 Deluxe rooms
+
                     addRoomBatch(pstmt, 201, "DELUXE", 90.0, "AVAILABLE", "Sea view deluxe room with king bed");
                     addRoomBatch(pstmt, 202, "DELUXE", 100.0, "AVAILABLE", "City view deluxe room with private balcony");
-                    // 2 Suite rooms
+
                     addRoomBatch(pstmt, 301, "SUITE", 180.0, "AVAILABLE", "Presidential luxury suite with jacuzzi");
                     addRoomBatch(pstmt, 302, "SUITE", 220.0, "AVAILABLE", "Executive penthouse suite with skyline view");
                     pstmt.executeBatch();
@@ -96,13 +91,12 @@ public class DatabaseInitializer {
             }
         }
 
-        // Check and seed staff
         try (Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery("SELECT COUNT(*) AS count FROM staff")) {
             if (rs.next() && rs.getInt("count") == 0) {
                 String insertStaff = "INSERT INTO staff (staff_id, name, role, email, phone, password) VALUES (?, ?, ?, ?, ?, ?)";
                 try (PreparedStatement pstmt = conn.prepareStatement(insertStaff)) {
-                    // 1 default Admin
+
                     pstmt.setInt(1, 999);
                     pstmt.setString(2, "Master Admin");
                     pstmt.setString(3, "ADMIN");
@@ -111,7 +105,6 @@ public class DatabaseInitializer {
                     pstmt.setString(6, "admin");
                     pstmt.addBatch();
 
-                    // 2 default Staff
                     pstmt.setInt(1, 1);
                     pstmt.setString(2, "Alice Johnson");
                     pstmt.setString(3, "STAFF");
@@ -134,7 +127,6 @@ public class DatabaseInitializer {
             }
         }
 
-        // Check and seed customer
         try (Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery("SELECT COUNT(*) AS count FROM customers")) {
             if (rs.next() && rs.getInt("count") == 0) {

@@ -1,168 +1,114 @@
-# AGENT.md — Hotel Management System (Astra) Upgrade Plan
-**Target Environment:** Java SE (JDK 17/21+), JDBC (SQLite / MySQL), Java Swing (`javax.swing`, `java.awt`)
-**Academic Standard:** KTU 2024 Scheme — S3 Object-Oriented Programming in Java
+# AGENT.md — Top Booking Bar, Interactive Calendar Picker & Date-Range Room Availability
+**Target Packages:** `com.hotel.ui.swing`, `com.hotel.service`, `com.hotel.repository`
 
 ---
 
-## 0. Agent Directives & Ground Rules
-1. **Inspect Before Modifying:** Before writing any code, read all existing `.java` files inside:
-   - `com/hotel/Main.java`
-   - `com/hotel/domain/*` (`Person`, `Customer`, `HotelStaff`, `Admin`, `Room`, `StandardRoom`, `DeluxeRoom`, `SuiteRoom`, `Reservation`, `Payment`, `CardPayment`, `CashPayment`, `UpiPayment`)
-   - `com/hotel/repository/*` (`CustomerRepository`, `RoomRepository`, `ReservationRepository`, `PaymentRepository`, `StaffRepository`)
-   - `com/hotel/service/*` (`AuthenticationCustomerService`, `RoomManagementService`, `ReservationService`, `PaymentService`, `PaymentGateway`, `StaffService`)
-   - `com/hotel/ui/*` (`AdminPortal`, `CustomerPortal`, `StaffPortal`)
-2. **Preserve OOP & Service Contracts:** Do **not** flatten or delete the domain inheritance hierarchies (`Person`, `Room`, `Payment`). Keep existing public method signatures in `com.hotel.service.*` and `com.hotel.domain.*` intact wherever possible so business logic does not break.
-3. **Zero Broken Builds:** Compile the project (`javac`) after completing each phase to verify there are no missing imports, type mismatches, or unhandled `SQLException` errors.
-4. **Delete Stale `.class` Files:** Clean out pre-compiled `.class` files in the source tree and ensure compilation outputs cleanly.
+## Task 1: Move Customer Booking & Filter Bar to the Top (`CustomerDashboardPanel.java`)
+
+1. Open `com/hotel/ui/swing/CustomerDashboardPanel.java` in the **Browse & Book Rooms** view.
+2. **Remove the booking input form from the bottom (`BorderLayout.SOUTH`)** and consolidate the **Filter Bar + Booking Bar at the very top (`BorderLayout.NORTH`)** directly above the Rooms `JTable` (`BorderLayout.CENTER`).
+3. Structure the top bar using a clean two-row card panel (`GridBagLayout` or `FlowLayout` inside a titled/padded white card container):
+   - **Row 1 (Search & Dates):**
+     - `Room Type:` `JComboBox<String>` (`All`, `STANDARD`, `DELUXE`, `SUITE`)
+     - `Check-In Date:` Read-only display field + **"📅 Select Check-In"** calendar button (defaults to today: `LocalDate.now()`).
+     - `Check-Out Date:` Read-only display field + **"📅 Select Check-Out"** calendar button (defaults to tomorrow: `LocalDate.now().plusDays(1)`).
+     - **"Check Availability / Refresh"** button.
+   - **Row 2 (Selected Room & Action):**
+     - `Selected Room No:` Read-only/auto-filled badge or field populated when clicking a row in the table below.
+     - `Availability Notice:` Dynamic status label (`JLabel`) showing exact booking window details for the selected room (e.g., *"Room #101 is available for your dates! (Available until 2026-11-10)"*).
+     - **"Book & Proceed to Payment"** primary action button on the right.
 
 ---
 
-## Phase 1: SQL Database & JDBC Infrastructure (`com.hotel.database`)
+## Task 2: Replace Typing with an Interactive Swing Calendar Page (`CalendarPickerDialog.java`)
 
-Create a new package `com.hotel.database` to handle persistent storage using standard JDBC (`java.sql.*`).
-
-### 1.1 `DatabaseConnection.java`
-- Implement a singleton/utility connection manager using `java.sql.DriverManager` and `java.sql.Connection`.
-- Default to **SQLite** (`jdbc:sqlite:hotel_astra.db`) for zero-configuration portability during lab evaluation, with easy fallback configuration constants (`DB_URL`, `DB_USER`, `DB_PASSWORD`) for **MySQL** (`jdbc:mysql://localhost:3306/hotel_astra`).
-- Provide a static method `public static Connection getConnection() throws SQLException`.
-
-### 1.2 `DatabaseInitializer.java` (Schema & Seed Data)
-- Create a method `public static void initialize()` that executes `CREATE TABLE IF NOT EXISTS` statements on startup for the 5 core entities:
-  1. **`customers`**:
-     - `customer_id INT PRIMARY KEY`
-     - `name VARCHAR(100) NOT NULL`
-     - `email VARCHAR(100) UNIQUE NOT NULL`
-     - `phone VARCHAR(20)`
-     - `address VARCHAR(255)`
-     - `password VARCHAR(100)` (check `Customer.java` and `AuthenticationCustomerService.java` for exact auth fields used in the current codebase and match them).
-  2. **`staff`**:
-     - `staff_id INT PRIMARY KEY`
-     - `name VARCHAR(100) NOT NULL`
-     - `role VARCHAR(50) NOT NULL` (Discriminator: `'ADMIN'` or `'STAFF'` to map to `Admin` and `HotelStaff` subclasses)
-     - `email VARCHAR(100) UNIQUE`
-     - `phone VARCHAR(20)`
-     - `password VARCHAR(100)` (if used by existing auth/staff login).
-  3. **`rooms`**:
-     - `room_id INT PRIMARY KEY` (or `room_no` matching `Room.java`)
-     - `room_type VARCHAR(50) NOT NULL` (Discriminator: `'STANDARD'`, `'DELUXE'`, `'SUITE'` to instantiate `StandardRoom`, `DeluxeRoom`, or `SuiteRoom`)
-     - `price DOUBLE NOT NULL`
-     - `status VARCHAR(30) NOT NULL` (e.g., `'AVAILABLE'`, `'BOOKED'`, `'OCCUPIED'`, `'MAINTENANCE'`)
-     - `description VARCHAR(255)` (and any subclass-specific attributes present in `StandardRoom`, `DeluxeRoom`, `SuiteRoom`).
-  4. **`reservations`**:
-     - `reservation_id INT PRIMARY KEY`
-     - `customer_id INT NOT NULL`
-     - `room_id INT NOT NULL`
-     - `check_in_date VARCHAR(30) NOT NULL` (or `DATE`/`BIGINT` matching the exact type of `checkInDate` in `Reservation.java`)
-     - `check_out_date VARCHAR(30) NOT NULL`
-     - `status VARCHAR(30) NOT NULL` (`'CONFIRMED'`, `'CANCELLED'`, `'COMPLETED'`, `'PENDING'`)
-     - `total_amount DOUBLE`
-     - Foreign keys referencing `customers(customer_id)` and `rooms(room_id)`.
-  5. **`payments`**:
-     - `payment_id INT PRIMARY KEY`
-     - `reservation_id INT`
-     - `amount DOUBLE NOT NULL`
-     - `payment_method VARCHAR(30) NOT NULL` (Discriminator: `'CARD'`, `'CASH'`, `'UPI'` to instantiate `CardPayment`, `CashPayment`, or `UpiPayment`)
-     - `payment_status VARCHAR(30) NOT NULL`
-     - `payment_date VARCHAR(30)`
-     - `payment_details VARCHAR(255)` (to store masked card number / UPI ID / cash receipt info from subclasses).
-- **Seed Data:** If the `rooms` and `staff` tables are empty on startup, automatically insert:
-  - 6 sample rooms (2 `StandardRoom`, 2 `DeluxeRoom`, 2 `SuiteRoom`).
-  - 1 default `Admin` account and 2 default `HotelStaff` accounts.
-  - 1 default `Customer` account for quick testing.
+1. Create a new reusable class `com/hotel/ui/swing/CalendarPickerDialog.java` extending `JDialog` (modal) using standard `java.time.LocalDate` and `java.time.YearMonth` (zero external JAR dependencies required).
+2. **Calendar Page UI & Behavior:**
+   - **Header Bar:**
+     - `"◀ Prev"` button (`currentYearMonth = currentYearMonth.minusMonths(1)`).
+     - Center `JLabel` displaying `"MMMM yyyy"` (e.g., `"November 2026"`).
+     - `"Next ▶"` button (`currentYearMonth = currentYearMonth.plusMonths(1)`).
+   - **Day-of-Week Header Grid (7 Columns):** `Sun`, `Mon`, `Tue`, `Wed`, `Thu`, `Fri`, `Sat`.
+   - **Day Buttons Grid (`6x7` `GridLayout`):**
+     - Render day numbers `1` through `currentYearMonth.lengthOfMonth()` aligned under the correct weekday column.
+     - **Disable Past Dates:** Any date before `LocalDate.now()` (or before `checkInDate.plusDays(1)` when picking Check-Out) must be disabled (`setEnabled(false)`) and grayed out.
+     - **Highlight Reserved Dates (Visual Aid):** If a room is currently selected in the table, pass its active `List<Reservation>` into `CalendarPickerDialog`:
+       - Color dates that are already booked by another customer in soft amber/red (`new Color(254, 226, 226)`) with a tooltip (`"Booked from " + checkIn + " to " + checkOut`), while keeping the **check-in day of a future reservation clickable as a valid Check-Out date** so a guest can book right up until the next guest arrives!
+     - **Single-Click Selection:** Clicking a valid date button sets the selected `LocalDate`, closes the dialog, updates the Check-In or Check-Out field in `CustomerDashboardPanel`, and automatically refreshes the Rooms `JTable` availability column.
+3. **Remove Manual Typing:**
+   - Make the Check-In and Check-Out fields non-editable by keyboard (`setEditable(false)`), and trigger `CalendarPickerDialog` whenever the user clicks either the date text field (`MouseListener`) or the **"📅 Select Check-In / Check-Out"** button.
 
 ---
 
-## Phase 2: Repository Layer JDBC Refactoring (`com.hotel.repository`)
+## Task 3: Date-Range Room Availability & Pre-Arrival Booking Logic (`ReservationRepository` & `ReservationService`)
 
-Refactor all 5 repositories to replace in-memory `List`/`Map` storage with SQL queries using `PreparedStatement` and `ResultSet` (preventing SQL injection and satisfying KTU JDBC best practices). **Keep all existing public method names and return types identical.**
+### Core Rule
+If Customer A books a room for 10 days later (e.g., `2026-11-10` to `2026-11-15`), that room **MUST still appear to Customer B** and **MUST be bookable for any dates before `2026-11-10` (including checking out ON `2026-11-10` when Customer A arrives)**, or after `2026-11-15`.
 
-### 2.1 Polymorphic Object Reconstruction (Crucial OOP Requirement)
-- **`RoomRepository.java`**:
-  - When reading a row from `rooms`, inspect `rs.getString("room_type")` and instantiate the concrete subclass: `new StandardRoom(...)`, `new DeluxeRoom(...)`, or `new SuiteRoom(...)`.
-  - Implement `save/add`, `findById/findByRoomNo`, `findAll`, `findAvailableRooms`, `updateStatus`, and `delete` via SQL `INSERT`, `SELECT`, `UPDATE`, and `DELETE`.
-- **`CustomerRepository.java`**:
-  - Replace in-memory collection operations with SQL `INSERT INTO customers`, `SELECT * FROM customers WHERE ...`, `UPDATE customers`, etc.
-- **`StaffRepository.java`**:
-  - Reconstruct either `Admin` or `HotelStaff` based on the `role` column in `ResultSet`.
-- **`ReservationRepository.java`**:
-  - Implement SQL CRUD for `Reservation`. When reconstructing a `Reservation` object, if `Reservation.java` holds object references to `Customer` and `Room` (rather than just IDs), resolve them via `CustomerRepository` and `RoomRepository` or a SQL `JOIN`.
-- **`PaymentRepository.java`**:
-  - Inspect `payment_method` (`CARD`, `CASH`, `UPI`) and instantiate `CardPayment`, `CashPayment`, or `UpiPayment` accordingly.
-
----
-
-## Phase 3: Java Swing User Interface (`com.hotel.ui.swing`)
-
-Keep the existing console portals (`AdminPortal`, `CustomerPortal`, `StaffPortal`) intact for backward compatibility, and create a new package `com.hotel.ui.swing` implementing the full desktop GUI following the System Workflow.
-
-### 3.1 Visual Theme & Styling (`UIStyle.java`)
-- Configure `UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName())` or `NimbusLookAndFeel`.
-- Define a centralized palette in `UIStyle.java`:
-  - Primary Dark Navy/Slate sidebar (`#1E293B`), Accent Gold/Indigo buttons (`#4F46E5` / `#0EA5E9`), Clean Light background (`#F8FAFC`), Card surface (`#FFFFFF`), Status badges (Green for Available/Confirmed, Red for Occupied/Cancelled).
-  - Helper factory methods for styled `JButton`, `JTextField`, `JLabel`, and `JTable` headers with clean padding (`EmptyBorder`) and readable sans-serif fonts (`Segoe UI` / `SansSerif`, 14pt).
-
-### 3.2 Main Window & Navigation (`HotelAppFrame.java`)
-- Extend `JFrame` (`title: "Astra Hotel Reservation & Management System"`), size `1150x750`, centered on screen (`setLocationRelativeTo(null)`), `EXIT_ON_CLOSE`.
-- Use a top-level `CardLayout` containing 4 primary views:
-  1. `WelcomeAuthPanel` (Role Selection, Customer Login & Registration, Staff/Admin Login)
-  2. `CustomerDashboardPanel` (Customer Portal)
-  3. `StaffDashboardPanel` (Hotel Staff Portal)
-  4. `AdminDashboardPanel` (Admin Portal)
-- Pass the existing service instances (`AuthenticationCustomerService`, `RoomManagementService`, `ReservationService`, `PaymentService`, `StaffService`) into the panels via constructor dependency injection.
-
-### 3.3 `WelcomeAuthPanel.java`
-- Split layout: Left side displays Hotel Astra branding and system status; Right side provides a `JTabbedPane` for:
-  - **Customer Login / Sign Up:** Fields for Name, Email, Phone, Address, Password (matching `AuthenticationCustomerService` methods).
-  - **Staff / Admin Portal Access:** Staff ID / Credentials login routing to either `StaffDashboardPanel` or `AdminDashboardPanel`.
-
-### 3.4 `CustomerDashboardPanel.java` (8-Step Workflow Implementation)
-Use a left sidebar navigation + `CardLayout` content area with 3 views:
-1. **Browse & Book Rooms View:**
-   - Top filter bar: Room Type dropdown (`All`, `Standard`, `Deluxe`, `Suite`) and Refresh button.
-   - Center: `JTable` with `DefaultTableModel` displaying Room No, Type, Price/Night, Status, and Description.
-   - Bottom/Right Booking Form: Selected Room No, Check-In Date (`YYYY-MM-DD`), Check-Out Date (`YYYY-MM-DD`), and **"Book & Proceed to Payment"** button.
-2. **Payment & Bill Dialog (`PaymentDialog.java` - `JDialog`):**
-   - Triggered upon booking confirmation.
-   - Radio buttons / ComboBox for Payment Method: **Card**, **UPI**, or **Cash**.
-   - Dynamic input fields (Card Number/CVV for `CardPayment`, UPI ID for `UpiPayment`, Cash Tendered for `CashPayment`).
-   - Invokes `PaymentService` / `PaymentGateway` polymorphically, updates reservation & room status in SQL DB, and displays a formatted **Itemized Bill Receipt** in a monospaced `JTextArea` with a "Print / Save Receipt" option.
-3. **My Reservations View:**
-   - `JTable` listing all bookings for the logged-in customer (`ReservationService`).
-   - **"Cancel Selected Reservation"** button (`ActionListener`) that calls `ReservationService`, frees the room back to `AVAILABLE`, and refreshes the table.
-   - **"View Bill"** button to re-open the receipt for any paid reservation.
-
-### 3.5 `StaffDashboardPanel.java`
-- **All Reservations Tab:** `JTable` of all customer reservations with buttons to **Confirm Booking**, **Check-In / Check-Out**, or **Cancel Reservation**.
-- **Room Status Management Tab:** `JTable` of all rooms allowing staff to toggle room status (`AVAILABLE`, `OCCUPIED`, `MAINTENANCE`) in real time via `RoomManagementService`.
-- **Customer Directory Tab:** Searchable `JTable` of registered customers and their contact details.
-
-### 3.6 `AdminDashboardPanel.java`
-- **Manage Rooms Tab:** Form to add new `StandardRoom`, `DeluxeRoom`, or `SuiteRoom` records to the database, update room pricing, or delete rooms.
-- **Manage Staff Tab:** Form and `JTable` to add/view/remove `HotelStaff` and `Admin` records via `StaffService`.
-- **Payments & Revenue Overview Tab:** Summary cards (Total Bookings, Available Rooms, Total Revenue) + `JTable` showing all recorded transactions from `PaymentRepository`.
-
----
-
-## Phase 4: Application Entry Point & Build Verification (`com.hotel.Main`)
-
-1. Update `com/hotel/Main.java`:
-   - Call `DatabaseInitializer.initialize()` on startup.
-   - Instantiate the repositories and services.
-   - If launched with `--cli` argument, run the legacy console menu (`CustomerPortal`, `StaffPortal`, `AdminPortal`).
-   - By default (no arguments), launch `HotelAppFrame` on the Swing Event Dispatch Thread using `SwingUtilities.invokeLater(() -> new HotelAppFrame(...).setVisible(true))`.
-2. Update `README.md` with:
-   - Instructions to download/include `sqlite-jdbc.jar` (or `mysql-connector-j.jar`) in the `lib/` folder.
-   - Exact compile and run commands for Windows and Linux/macOS:
-     ```bash
-     javac -cp ".:lib/*" com/hotel/Main.java
-     java -cp ".:lib/*" com.hotel.Main
+1. **In `com/hotel/repository/ReservationRepository.java`:**
+   - Add a method to fetch all active/upcoming reservations for a specific room, sorted chronologically:
+     ```java
+     public List<Reservation> findActiveReservationsByRoomId(int roomId) {
+         List<Reservation> list = new ArrayList<>();
+         String sql = "SELECT * FROM reservations WHERE room_id = ? " +
+                      "AND UPPER(status) NOT IN ('CANCELLED', 'COMPLETED', 'CHECKED_OUT') " +
+                      "ORDER BY check_in_date ASC";
+         try (Connection conn = DatabaseConnection.getConnection();
+              PreparedStatement pstmt = conn.prepareStatement(sql)) {
+             pstmt.setInt(1, roomId);
+             try (ResultSet rs = pstmt.executeQuery()) {
+                 while (rs.next()) {
+                     list.add(mapResultSetToReservation(rs));
+                 }
+             }
+         } catch (SQLException e) {
+             e.printStackTrace();
+         }
+         return list;
+     }
      ```
-     *(Use `;` instead of `:` on Windows PowerShell/CMD).*
+   - Add a method `isRoomAvailableForDateRange(int roomId, LocalDate reqCheckIn, LocalDate reqCheckOut)`:
+     - Parse each active reservation's `checkInDate` and `checkOutDate` into `LocalDate`.
+     - **Overlap Formula (Allows Same-Day Turnover):**
+       Two stays overlap **if and only if**:
+       `reqCheckIn.isBefore(existingCheckOut) && reqCheckOut.isAfter(existingCheckIn)`
+     - Notice that if Customer A arrives on `2026-11-10` (`existingCheckIn = 2026-11-10`) and Customer B selects `reqCheckOut = 2026-11-10`, `reqCheckOut.isAfter(existingCheckIn)` is `false` — meaning **Customer B IS allowed to book right up until the day Customer A arrives!**
+
+2. **In `com/hotel/service/ReservationService.java` & `RoomManagementService.java`:**
+   - **Do NOT permanently block a room just because its status column says `'BOOKED'` for a future reservation.**
+   - Only block a room globally if its status is `'MAINTENANCE'`.
+   - When creating a reservation in `ReservationService`:
+     - Validate that `checkOutDate.isAfter(checkInDate)` and `!checkInDate.isBefore(LocalDate.now())`.
+     - Check `reservationRepository.isRoomAvailableForDateRange(roomId, checkInDate, checkOutDate)`.
+     - If there is an overlap, throw a descriptive exception or return a clear error message stating the exact conflicting dates and when the room is free (e.g., *"Room #102 is already reserved from 2026-11-10 to 2026-11-15. You can book it before 2026-11-10 (Check-Out on or before 2026-11-10) or from 2026-11-15 onwards."*).
 
 ---
 
-## Phase 5: Self-Verification Checklist (Agent Must Complete Before Finishing)
-- [ ] All `.java` files compile with zero errors.
-- [ ] `DatabaseInitializer` creates all 5 SQL tables and seeds initial rooms and staff without throwing `SQLException`.
-- [ ] All 5 repositories execute `PreparedStatement` queries and properly reconstruct polymorphic subclasses (`StandardRoom`/`DeluxeRoom`/`SuiteRoom` and `CardPayment`/`CashPayment`/`UpiPayment`).
-- [ ] Swing GUI launches via `SwingUtilities.invokeLater` and performs end-to-end Customer Registration -> Room Selection -> Reservation Creation -> Polymorphic Payment -> Bill Generation -> Cancellation, persisting data across application restarts.
+## Task 4: Display Clear Upcoming Booking & Availability Information to Customers
+
+1. **Add an `"Availability & Schedule Info"` Column to the Customer Rooms `JTable` (`CustomerDashboardPanel.java`):**
+   - Update the Customer Rooms table columns to:
+     `["Room No", "Room Type", "Price / Night (₹)", "Status for Selected Dates", "Upcoming Schedule / Availability Info", "Description"]`
+   - For every room (except `'MAINTENANCE'`), compute its status dynamically based on the currently selected `Check-In` and `Check-Out` dates in the Top Bar:
+     - **Case 1 — Room has NO active reservations:**
+       - `Status for Selected Dates`: `"AVAILABLE"`
+       - `Upcoming Schedule / Availability Info`: `"Open — Available for all dates"`
+     - **Case 2 — Room has a future reservation (e.g., 10 days later: `2026-11-10` to `2026-11-15`), and Customer's selected dates do NOT overlap (e.g., `2026-10-31` to `2026-11-10`):**
+       - `Status for Selected Dates`: `"AVAILABLE (Until 2026-11-10)"`
+       - `Upcoming Schedule / Availability Info`: `"Free now until 2026-11-10 | Next Booking: 2026-11-10 to 2026-11-15"`
+     - **Case 3 — Customer's selected dates overlap with an existing reservation (`2026-11-10` to `2026-11-15`):**
+       - `Status for Selected Dates`: `"BOOKED FOR SELECTED DATES"`
+       - `Upcoming Schedule / Availability Info`: `"Reserved: 2026-11-10 to 2026-11-15 (Available before 2026-11-10 or after 2026-11-15)"`
+2. **Interactive Banner & Dialog Feedback:**
+   - When a customer clicks a room in the table that has an upcoming reservation, update the top bar's `Availability Notice` banner in blue/green if their dates fit before the future reservation (e.g., *"✔ Available for your stay! Note: Another guest arrives on 2026-11-10, so checkout must be on or before 2026-11-10"*), or in red if their dates conflict.
+
+---
+
+## Task 5: Compile & Verify End-to-End Scenario
+1. Compile all `.java` files (`javac -cp ".;lib/*" com/hotel/Main.java` or `javac -cp ".:lib/*" com/hotel/Main.java`) with **0 errors**.
+2. **Test the 10-Day Future Booking Scenario:**
+   - Log in as Customer 1, use the top **Calendar Picker** to book Room `101` for 10 days from today (e.g., Check-In: `+10 days`, Check-Out: `+14 days`), and complete payment.
+   - Log in as Customer 2 (or stay in the Customer Portal) and view the Browse & Book Rooms table:
+     - Verify the booking inputs are at the **top** of the screen.
+     - Verify Room `101` is still visible in the table and clearly displays `"Free now until <Date+10> | Next Booking: <Date+10> to <Date+14>"`.
+     - Select Check-In = `Today` and Check-Out = `<Date+10>` using the **Calendar Page** and confirm Customer 2 can successfully book Room `101` right up until Customer 1 arrives.

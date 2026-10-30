@@ -45,7 +45,6 @@ public class AdminDashboardPanel extends JPanel {
 
     private Admin currentAdmin;
 
-    // Room Management Components
     private DefaultTableModel roomTableModel;
     private JTable roomTable;
     private JTextField tfRoomNo;
@@ -53,8 +52,11 @@ public class AdminDashboardPanel extends JPanel {
     private JTextField tfRoomPrice;
     private JComboBox<String> cbRoomStatus;
     private JTextField tfRoomDesc;
+    private JTextField tfLinkedResId;
+    private JButton btnViewLinkedRes;
+    private Integer currentLinkedResId = null;
+    private boolean isPopulatingFromTable = false;
 
-    // Staff Management Components
     private DefaultTableModel staffTableModel;
     private JTable staffTable;
     private JTextField tfStaffId;
@@ -64,7 +66,6 @@ public class AdminDashboardPanel extends JPanel {
     private JTextField tfStaffPhone;
     private JTextField tfStaffPass;
 
-    // Revenue Overview Components
     private JLabel lblTotalBookings;
     private JLabel lblAvailRooms;
     private JLabel lblTotalRevenue;
@@ -94,7 +95,7 @@ public class AdminDashboardPanel extends JPanel {
     }
 
     private void initUI() {
-        // --- Left Sidebar ---
+
         JPanel sidebar = new JPanel();
         sidebar.setLayout(new BoxLayout(sidebar, BoxLayout.Y_AXIS));
         sidebar.setBackground(UIStyle.COLOR_PRIMARY_DARK);
@@ -115,7 +116,6 @@ public class AdminDashboardPanel extends JPanel {
         sidebar.add(subBrand);
         sidebar.add(Box.createVerticalStrut(24));
 
-        // Admin Badge Box
         JPanel adminCard = new JPanel();
         adminCard.setLayout(new BoxLayout(adminCard, BoxLayout.Y_AXIS));
         adminCard.setBackground(UIStyle.COLOR_SIDEBAR_HOVER);
@@ -146,7 +146,6 @@ public class AdminDashboardPanel extends JPanel {
 
         add(sidebar, BorderLayout.WEST);
 
-        // --- Center Tabs ---
         JTabbedPane tabbedPane = new JTabbedPane();
         tabbedPane.setFont(UIStyle.FONT_BOLD);
         tabbedPane.setBorder(new EmptyBorder(12, 12, 12, 12));
@@ -158,13 +157,11 @@ public class AdminDashboardPanel extends JPanel {
         add(tabbedPane, BorderLayout.CENTER);
     }
 
-    // --- Tab 1: Manage Rooms ---
     private JPanel buildRoomsTab() {
         JPanel panel = new JPanel(new BorderLayout(14, 14));
         panel.setOpaque(false);
         panel.setBorder(new EmptyBorder(14, 14, 14, 14));
 
-        // Header
         JPanel top = new JPanel(new BorderLayout());
         top.setOpaque(false);
         JLabel title = new JLabel("Hotel Inventory — Room Management");
@@ -176,8 +173,7 @@ public class AdminDashboardPanel extends JPanel {
         top.add(refBtn, BorderLayout.EAST);
         panel.add(top, BorderLayout.NORTH);
 
-        // Center Table
-        String[] cols = {"Room No", "Room Type", "Price", "Status", "Description"};
+        String[] cols = {"Room No", "Room Type", "Price (₹)", "Status", "Reservation ID", "Description"};
         roomTableModel = new DefaultTableModel(cols, 0) {
             @Override
             public boolean isCellEditable(int r, int c) { return false; }
@@ -185,75 +181,169 @@ public class AdminDashboardPanel extends JPanel {
         roomTable = new JTable(roomTableModel);
         UIStyle.styleTable(roomTable);
         roomTable.getColumnModel().getColumn(3).setCellRenderer(UIStyle.createStatusBadgeRenderer());
+        roomTable.getColumnModel().getColumn(4).setCellRenderer(UIStyle.createStatusBadgeRenderer());
         roomTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
         roomTable.getSelectionModel().addListSelectionListener(e -> {
-            int row = roomTable.getSelectedRow();
-            if (row >= 0) {
-                tfRoomNo.setText(String.valueOf(roomTableModel.getValueAt(row, 0)));
-                cbRoomType.setSelectedItem(roomTableModel.getValueAt(row, 1));
-                String pStr = String.valueOf(roomTableModel.getValueAt(row, 2)).replace("$", "");
-                tfRoomPrice.setText(pStr);
-                cbRoomStatus.setSelectedItem(roomTableModel.getValueAt(row, 3));
-                tfRoomDesc.setText(String.valueOf(roomTableModel.getValueAt(row, 4)));
+            if (!e.getValueIsAdjusting()) {
+                int row = roomTable.getSelectedRow();
+                if (row >= 0) {
+                    isPopulatingFromTable = true;
+                    try {
+                        tfRoomNo.setText(String.valueOf(roomTableModel.getValueAt(row, 0)));
+                        String type = String.valueOf(roomTableModel.getValueAt(row, 1)).trim().toUpperCase();
+                        cbRoomType.setSelectedItem(type);
+                        String pStr = String.valueOf(roomTableModel.getValueAt(row, 2)).replaceAll("[^0-9.]", "").trim();
+                        tfRoomPrice.setText(pStr);
+                        String status = String.valueOf(roomTableModel.getValueAt(row, 3)).trim().toUpperCase();
+                        cbRoomStatus.setSelectedItem(status);
+                        String resIdVal = String.valueOf(roomTableModel.getValueAt(row, 4));
+                        Object descVal = roomTableModel.getValueAt(row, 5);
+                        tfRoomDesc.setText(descVal != null ? String.valueOf(descVal) : "");
+
+                        if (resIdVal != null && !resIdVal.equals("—") && !resIdVal.trim().isEmpty()) {
+                            tfLinkedResId.setText(resIdVal);
+                            try {
+                                currentLinkedResId = Integer.parseInt(resIdVal.replace("#", "").trim());
+                                btnViewLinkedRes.setEnabled(true);
+                            } catch (Exception parseEx) {
+                                currentLinkedResId = null;
+                                btnViewLinkedRes.setEnabled(false);
+                            }
+                        } else {
+                            tfLinkedResId.setText("—");
+                            currentLinkedResId = null;
+                            btnViewLinkedRes.setEnabled(false);
+                        }
+                    } finally {
+                        isPopulatingFromTable = false;
+                    }
+                }
             }
         });
 
         panel.add(new JScrollPane(roomTable), BorderLayout.CENTER);
 
-        // Bottom Form Card
         JPanel formCard = UIStyle.createCardPanel();
         formCard.setLayout(new GridBagLayout());
         GridBagConstraints g = new GridBagConstraints();
-        g.insets = new Insets(6, 6, 6, 6);
+        g.fill = GridBagConstraints.HORIZONTAL;
+        g.weightx = 1.0;
+        g.insets = new Insets(6, 8, 6, 8);
         g.anchor = GridBagConstraints.WEST;
 
-        g.gridx = 0; g.gridy = 0;
-        formCard.add(new JLabel("Room No:"), g);
-        g.gridx = 1;
-        tfRoomNo = UIStyle.createTextField(6);
+        JLabel lblRoomNo = new JLabel("Room Number:");
+        lblRoomNo.setFont(UIStyle.FONT_BOLD);
+        lblRoomNo.setForeground(UIStyle.COLOR_TEXT_MAIN);
+        g.gridx = 0; g.gridy = 0; g.weightx = 0;
+        formCard.add(lblRoomNo, g);
+
+        tfRoomNo = UIStyle.createTextField(12);
+        g.gridx = 1; g.gridy = 0; g.weightx = 1.0;
         formCard.add(tfRoomNo, g);
 
-        g.gridx = 2;
-        formCard.add(new JLabel("Type:"), g);
-        g.gridx = 3;
-        cbRoomType = new JComboBox<>(new String[]{"Standard", "Deluxe", "Suite"});
+        JLabel lblRoomType = new JLabel("Room Type:");
+        lblRoomType.setFont(UIStyle.FONT_BOLD);
+        lblRoomType.setForeground(UIStyle.COLOR_TEXT_MAIN);
+        g.gridx = 2; g.gridy = 0; g.weightx = 0;
+        formCard.add(lblRoomType, g);
+
+        cbRoomType = new JComboBox<>(new String[]{"STANDARD", "DELUXE", "SUITE"});
         cbRoomType.setFont(UIStyle.FONT_REGULAR);
+        cbRoomType.setPreferredSize(new Dimension(160, 38));
+        cbRoomType.addActionListener(e -> {
+            if (isPopulatingFromTable) return;
+            String selected = (String) cbRoomType.getSelectedItem();
+            if ("STANDARD".equalsIgnoreCase(selected)) {
+                tfRoomPrice.setText("2500.0");
+            } else if ("DELUXE".equalsIgnoreCase(selected)) {
+                tfRoomPrice.setText("4500.0");
+            } else if ("SUITE".equalsIgnoreCase(selected)) {
+                tfRoomPrice.setText("8000.0");
+            }
+        });
+        g.gridx = 3; g.gridy = 0; g.weightx = 1.0;
         formCard.add(cbRoomType, g);
 
-        g.gridx = 4;
-        formCard.add(new JLabel("Nightly Tariff ($):"), g);
-        g.gridx = 5;
-        tfRoomPrice = UIStyle.createTextField(8);
-        tfRoomPrice.setText("75.00");
+        JLabel lblPrice = new JLabel("Price per Night (₹):");
+        lblPrice.setFont(UIStyle.FONT_BOLD);
+        lblPrice.setForeground(UIStyle.COLOR_TEXT_MAIN);
+        g.gridx = 4; g.gridy = 0; g.weightx = 0;
+        formCard.add(lblPrice, g);
+
+        tfRoomPrice = UIStyle.createTextField(12);
+        tfRoomPrice.setText("2500.0");
+        g.gridx = 5; g.gridy = 0; g.weightx = 1.0;
         formCard.add(tfRoomPrice, g);
 
-        g.gridx = 6;
-        formCard.add(new JLabel("Status:"), g);
-        g.gridx = 7;
-        cbRoomStatus = new JComboBox<>(new String[]{"Available", "Booked", "Occupied", "Maintenance"});
+        JLabel lblStatus = new JLabel("Room Status:");
+        lblStatus.setFont(UIStyle.FONT_BOLD);
+        lblStatus.setForeground(UIStyle.COLOR_TEXT_MAIN);
+        g.gridx = 0; g.gridy = 1; g.weightx = 0;
+        formCard.add(lblStatus, g);
+
+        cbRoomStatus = new JComboBox<>(new String[]{"AVAILABLE", "OCCUPIED", "BOOKED", "MAINTENANCE"});
         cbRoomStatus.setFont(UIStyle.FONT_REGULAR);
+        cbRoomStatus.setPreferredSize(new Dimension(160, 38));
+        g.gridx = 1; g.gridy = 1; g.weightx = 1.0;
         formCard.add(cbRoomStatus, g);
 
-        g.gridx = 0; g.gridy = 1;
-        formCard.add(new JLabel("Description:"), g);
-        g.gridx = 1; g.gridwidth = 5; g.fill = GridBagConstraints.HORIZONTAL;
-        tfRoomDesc = UIStyle.createTextField(25);
+        JLabel lblDesc = new JLabel("Description:");
+        lblDesc.setFont(UIStyle.FONT_BOLD);
+        lblDesc.setForeground(UIStyle.COLOR_TEXT_MAIN);
+        g.gridx = 2; g.gridy = 1; g.weightx = 0;
+        formCard.add(lblDesc, g);
+
+        tfRoomDesc = UIStyle.createTextField(18);
+        g.gridx = 3; g.gridy = 1; g.gridwidth = 3; g.weightx = 2.0;
         formCard.add(tfRoomDesc, g);
 
-        g.gridx = 6; g.gridwidth = 2; g.fill = GridBagConstraints.NONE;
-        JPanel btns = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
+        JLabel lblLinkedRes = new JLabel("Connected Reservation ID:");
+        lblLinkedRes.setFont(UIStyle.FONT_BOLD);
+        lblLinkedRes.setForeground(UIStyle.COLOR_TEXT_MAIN);
+        g.gridx = 0; g.gridy = 2; g.gridwidth = 1; g.weightx = 0;
+        formCard.add(lblLinkedRes, g);
+
+        tfLinkedResId = UIStyle.createTextField(10);
+        tfLinkedResId.setEditable(false);
+        tfLinkedResId.setText("—");
+        tfLinkedResId.setBackground(new Color(241, 245, 249));
+        g.gridx = 1; g.gridy = 2; g.gridwidth = 1; g.weightx = 1.0;
+        formCard.add(tfLinkedResId, g);
+
+        btnViewLinkedRes = UIStyle.createSecondaryButton("View Linked Reservation");
+        btnViewLinkedRes.setEnabled(false);
+        btnViewLinkedRes.addActionListener(e -> showLinkedReservationDetails());
+        g.gridx = 2; g.gridy = 2; g.gridwidth = 2; g.weightx = 0;
+        formCard.add(btnViewLinkedRes, g);
+
+        g.gridx = 0; g.gridy = 3; g.gridwidth = 6; g.weightx = 1.0;
+        JPanel btns = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 4));
         btns.setOpaque(false);
+
+        JButton btnClear = UIStyle.createSecondaryButton("Clear Fields");
+        btnClear.addActionListener(e -> {
+            roomTable.clearSelection();
+            tfRoomNo.setText("");
+            cbRoomType.setSelectedIndex(0);
+            tfRoomPrice.setText("2500.0");
+            cbRoomStatus.setSelectedIndex(0);
+            tfRoomDesc.setText("");
+            tfLinkedResId.setText("—");
+            currentLinkedResId = null;
+            btnViewLinkedRes.setEnabled(false);
+        });
 
         JButton btnAdd = UIStyle.createPrimaryButton("Add Room");
         btnAdd.addActionListener(e -> handleAddRoom());
 
-        JButton btnUpdate = UIStyle.createSecondaryButton("Update");
+        JButton btnUpdate = UIStyle.createSecondaryButton("Update Room");
         btnUpdate.addActionListener(e -> handleUpdateRoom());
 
-        JButton btnDel = UIStyle.createDangerButton("Delete");
+        JButton btnDel = UIStyle.createDangerButton("Delete Room");
         btnDel.addActionListener(e -> handleDeleteRoom());
 
+        btns.add(btnClear);
         btns.add(btnAdd);
         btns.add(btnUpdate);
         btns.add(btnDel);
@@ -291,6 +381,15 @@ public class AdminDashboardPanel extends JPanel {
             String status = (String) cbRoomStatus.getSelectedItem();
             String desc = tfRoomDesc.getText().trim();
 
+            if ("AVAILABLE".equalsIgnoreCase(status)) {
+                Reservation activeRes = resService.getActiveReservationForRoom(roomNo);
+                while (activeRes != null) {
+                    activeRes.setStatus("Completed");
+                    resService.getReservationRepository().update(activeRes);
+                    activeRes = resService.getActiveReservationForRoom(roomNo);
+                }
+            }
+
             Room r = roomService.updateRoomDetails(roomNo, type, price, status, desc);
             if (r != null) {
                 JOptionPane.showMessageDialog(this, "Room " + roomNo + " updated successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
@@ -301,6 +400,52 @@ public class AdminDashboardPanel extends JPanel {
         } catch (Exception e) {
             JOptionPane.showMessageDialog(this, "Please enter valid room details.", "Invalid Input", JOptionPane.WARNING_MESSAGE);
         }
+    }
+
+    private void showLinkedReservationDetails() {
+        if (currentLinkedResId == null) {
+            JOptionPane.showMessageDialog(this, "No reservation is connected to this room.", "Notice", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        Reservation r = resService.getReservationById(currentLinkedResId);
+        if (r == null) {
+            JOptionPane.showMessageDialog(this, "Reservation #" + currentLinkedResId + " not found in database.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        String custName = r.getCustomer() != null ? r.getCustomer().getName() + " (ID #" + r.getCustomer().getCustomerId() + ")" : "N/A";
+        String custPhone = r.getCustomer() != null ? r.getCustomer().getPhone() : "N/A";
+        String custEmail = r.getCustomer() != null ? r.getCustomer().getEmail() : "N/A";
+        int roomNo = r.getRoom() != null ? r.getRoom().getRoomNo() : 0;
+        String roomType = r.getRoom() != null ? r.getRoom().getRoomType() : "N/A";
+        String payStatus = r.getPayment() != null ? r.getPayment().getPaymentStatus() : "Unpaid";
+
+        String details = String.format(
+                "Connected Booking Details\n\n" +
+                "• Reservation ID : #%d\n" +
+                "• Room Allocated : Room %d [%s]\n" +
+                "• Customer       : %s\n" +
+                "• Phone          : %s\n" +
+                "• Email          : %s\n" +
+                "• Check-In Date  : %s\n" +
+                "• Check-Out Date : %s\n" +
+                "• Booking Status : %s\n" +
+                "• Payment Status : %s\n" +
+                "• Total Amount   : ₹%.2f\n",
+                r.getReservationId(),
+                roomNo,
+                roomType,
+                custName,
+                custPhone,
+                custEmail,
+                r.getCheckInDate(),
+                r.getCheckOutDate(),
+                r.getStatus(),
+                payStatus,
+                r.getTotalAmount()
+        );
+
+        JOptionPane.showMessageDialog(this, details, "Connected Reservation #" + r.getReservationId(), JOptionPane.INFORMATION_MESSAGE);
     }
 
     private void handleDeleteRoom() {
@@ -316,7 +461,6 @@ public class AdminDashboardPanel extends JPanel {
         }
     }
 
-    // --- Tab 2: Manage Staff ---
     private JPanel buildStaffTab() {
         JPanel panel = new JPanel(new BorderLayout(14, 14));
         panel.setOpaque(false);
@@ -344,7 +488,6 @@ public class AdminDashboardPanel extends JPanel {
 
         panel.add(new JScrollPane(staffTable), BorderLayout.CENTER);
 
-        // Bottom Form
         JPanel formCard = UIStyle.createCardPanel();
         formCard.setLayout(new GridBagLayout());
         GridBagConstraints g = new GridBagConstraints();
@@ -453,13 +596,11 @@ public class AdminDashboardPanel extends JPanel {
         }
     }
 
-    // --- Tab 3: Payments & Revenue Overview ---
     private JPanel buildRevenueTab() {
         JPanel panel = new JPanel(new BorderLayout(14, 14));
         panel.setOpaque(false);
         panel.setBorder(new EmptyBorder(14, 14, 14, 14));
 
-        // Top Summary Cards
         JPanel kpiContainer = new JPanel(new GridLayout(1, 3, 14, 0));
         kpiContainer.setOpaque(false);
 
@@ -469,7 +610,6 @@ public class AdminDashboardPanel extends JPanel {
 
         panel.add(kpiContainer, BorderLayout.NORTH);
 
-        // Center Payments Table
         String[] cols = {"Payment ID", "Reservation ID", "Method", "Amount", "Status", "Date", "Details"};
         paymentTableModel = new DefaultTableModel(cols, 0) {
             @Override
@@ -482,12 +622,44 @@ public class AdminDashboardPanel extends JPanel {
 
         panel.add(new JScrollPane(paymentTable), BorderLayout.CENTER);
 
-        JPanel footer = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        footer.setOpaque(false);
-        JButton refBtn = UIStyle.createPrimaryButton("Refresh Revenue & Ledger");
+        JPanel bottomBar = UIStyle.createCardPanel();
+        bottomBar.setLayout(new FlowLayout(FlowLayout.RIGHT, 12, 6));
+
+        JLabel lblChangeStatus = new JLabel("Change Selected Payment Status:");
+        lblChangeStatus.setFont(UIStyle.FONT_BOLD);
+        lblChangeStatus.setForeground(UIStyle.COLOR_TEXT_MAIN);
+        bottomBar.add(lblChangeStatus);
+
+        JComboBox<String> cbPaymentStatus = new JComboBox<>(new String[]{"COMPLETED", "PAID", "PENDING", "REFUNDED", "FAILED"});
+        cbPaymentStatus.setFont(UIStyle.FONT_REGULAR);
+        cbPaymentStatus.setPreferredSize(new Dimension(160, 36));
+        bottomBar.add(cbPaymentStatus);
+
+        JButton btnUpdateStatus = UIStyle.createPrimaryButton("Update Payment Status");
+        btnUpdateStatus.addActionListener(e -> {
+            int row = paymentTable.getSelectedRow();
+            if (row < 0) {
+                JOptionPane.showMessageDialog(this, "Please select a payment row from the table first.", "Selection Required", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            int paymentId = (Integer) paymentTableModel.getValueAt(row, 0);
+            String selectedStatus = (String) cbPaymentStatus.getSelectedItem();
+
+            boolean success = payService.updatePaymentStatus(paymentId, selectedStatus);
+            if (success) {
+                refreshRevenue();
+                JOptionPane.showMessageDialog(this, "Payment #" + paymentId + " status updated to " + selectedStatus, "Success", JOptionPane.INFORMATION_MESSAGE);
+            } else {
+                JOptionPane.showMessageDialog(this, "Failed to update payment status for Payment #" + paymentId, "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+        bottomBar.add(btnUpdateStatus);
+
+        JButton refBtn = UIStyle.createSecondaryButton("Refresh Ledger");
         refBtn.addActionListener(e -> refreshRevenue());
-        footer.add(refBtn);
-        panel.add(footer, BorderLayout.SOUTH);
+        bottomBar.add(refBtn);
+
+        panel.add(bottomBar, BorderLayout.SOUTH);
 
         return panel;
     }
@@ -517,11 +689,21 @@ public class AdminDashboardPanel extends JPanel {
     public void refreshRooms() {
         roomTableModel.setRowCount(0);
         for (Room r : roomService.listAllRooms()) {
+            Reservation activeRes = resService.getActiveReservationForRoom(r.getRoomNo());
+            String resIdStr = "—";
+            String status = r.getStatus();
+            if (activeRes != null) {
+                resIdStr = "#" + activeRes.getReservationId();
+                if ("AVAILABLE".equalsIgnoreCase(status)) {
+                    status = "BOOKED";
+                }
+            }
             roomTableModel.addRow(new Object[]{
                     r.getRoomNo(),
                     r.getRoomType(),
-                    String.format("$%.2f", r.getPrice()),
-                    r.getStatus(),
+                    String.format("₹%.2f", r.getPrice()),
+                    status,
+                    resIdStr,
                     r.getDescription()
             });
         }
@@ -549,15 +731,16 @@ public class AdminDashboardPanel extends JPanel {
 
         for (Payment p : payments) {
             int resId = p.getReservation() != null ? p.getReservation().getReservationId() : 0;
-            if ("Paid".equalsIgnoreCase(p.getPaymentStatus())) {
+            String status = p.getPaymentStatus();
+            if (status != null && (status.equalsIgnoreCase("PAID") || status.equalsIgnoreCase("COMPLETED"))) {
                 totalRev += p.getAmount();
             }
             paymentTableModel.addRow(new Object[]{
                     p.getPaymentId(),
                     resId,
                     p.getPaymentMethod(),
-                    String.format("$%.2f", p.getAmount()),
-                    p.getPaymentStatus(),
+                    String.format("₹%.2f", p.getAmount()),
+                    status,
                     p.getPaymentDate() != null ? p.getPaymentDate() : "N/A",
                     p instanceof com.hotel.domain.CardPayment ? "Card (" + ((com.hotel.domain.CardPayment)p).getCardNumber() + ")" :
                     p instanceof com.hotel.domain.UpiPayment ? "UPI (" + ((com.hotel.domain.UpiPayment)p).getUpiId() + ")" : "Cash Desk"
@@ -566,6 +749,6 @@ public class AdminDashboardPanel extends JPanel {
 
         lblTotalBookings.setText(String.valueOf(totalBookings));
         lblAvailRooms.setText(String.valueOf(availRooms));
-        lblTotalRevenue.setText(String.format("$%.2f", totalRev));
+        lblTotalRevenue.setText(String.format("₹%.2f", totalRev));
     }
 }

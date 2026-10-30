@@ -15,13 +15,12 @@ import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.GridLayout;
-import java.awt.Insets;
 import java.awt.Window;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -33,10 +32,12 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JSeparator;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
+import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
@@ -57,16 +58,19 @@ public class CustomerDashboardPanel extends JPanel {
     private CardLayout contentCardLayout;
     private JPanel contentCards;
 
-    // Browse view components
+    // Top Bar controls
     private JComboBox<String> cbRoomTypeFilter;
-    private DefaultTableModel roomTableModel;
-    private JTable roomTable;
-    private JTextField tfSelectedRoom;
     private JTextField tfCheckIn;
     private JTextField tfCheckOut;
+    private JTextField tfSelectedRoom;
+    private JLabel lblAvailabilityNotice;
     private JLabel lblEstimatedTotal;
 
-    // Bookings view components
+    // Rooms table
+    private DefaultTableModel roomTableModel;
+    private JTable roomTable;
+
+    // Bookings table
     private DefaultTableModel bookingsTableModel;
     private JTable bookingsTable;
 
@@ -98,7 +102,6 @@ public class CustomerDashboardPanel extends JPanel {
     }
 
     private void initUI() {
-        // --- Left Sidebar ---
         JPanel sidebar = new JPanel();
         sidebar.setLayout(new BoxLayout(sidebar, BoxLayout.Y_AXIS));
         sidebar.setBackground(UIStyle.COLOR_PRIMARY_DARK);
@@ -119,7 +122,6 @@ public class CustomerDashboardPanel extends JPanel {
         sidebar.add(subBrand);
         sidebar.add(Box.createVerticalStrut(24));
 
-        // Profile Card
         JPanel profileBox = new JPanel();
         profileBox.setLayout(new BoxLayout(profileBox, BoxLayout.Y_AXIS));
         profileBox.setBackground(UIStyle.COLOR_SIDEBAR_HOVER);
@@ -158,7 +160,6 @@ public class CustomerDashboardPanel extends JPanel {
 
         add(sidebar, BorderLayout.WEST);
 
-        // --- Center Content Area ---
         contentCardLayout = new CardLayout();
         contentCards = new JPanel(contentCardLayout);
         contentCards.setOpaque(false);
@@ -196,39 +197,162 @@ public class CustomerDashboardPanel extends JPanel {
         return btn;
     }
 
-    // --- View 1: Browse & Book Rooms ---
     private JPanel buildBrowseView() {
-        JPanel panel = new JPanel(new BorderLayout(16, 16));
+        JPanel panel = new JPanel(new BorderLayout(14, 14));
         panel.setOpaque(false);
-        panel.setBorder(new EmptyBorder(20, 20, 20, 20));
+        panel.setBorder(new EmptyBorder(16, 18, 16, 18));
 
-        // Top Header & Filter Bar
-        JPanel topBar = new JPanel(new BorderLayout());
-        topBar.setOpaque(false);
+        // Top Consolidated Filter & Booking Container
+        JPanel topContainer = new JPanel();
+        topContainer.setLayout(new BoxLayout(topContainer, BoxLayout.Y_AXIS));
+        topContainer.setOpaque(false);
 
-        JLabel headerLbl = new JLabel("Available Rooms & Suites");
+        // Header Title Bar
+        JPanel titlePanel = new JPanel(new BorderLayout());
+        titlePanel.setOpaque(false);
+        titlePanel.setBorder(new EmptyBorder(0, 4, 8, 4));
+
+        JLabel headerLbl = new JLabel("Browse & Book Rooms");
         headerLbl.setFont(UIStyle.FONT_TITLE);
         headerLbl.setForeground(UIStyle.COLOR_TEXT_MAIN);
-        topBar.add(headerLbl, BorderLayout.WEST);
 
-        JPanel filterPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
-        filterPanel.setOpaque(false);
+        JLabel subHeaderLbl = new JLabel("Select your check-in & check-out dates to view real-time room availability and reserve instantly.");
+        subHeaderLbl.setFont(UIStyle.FONT_SMALL);
+        subHeaderLbl.setForeground(UIStyle.COLOR_TEXT_MUTED);
 
-        filterPanel.add(new JLabel("Room Category:"));
+        titlePanel.add(headerLbl, BorderLayout.NORTH);
+        titlePanel.add(subHeaderLbl, BorderLayout.SOUTH);
+        topContainer.add(titlePanel);
+
+        // Top Two-Row Card Container
+        JPanel topCard = UIStyle.createCardPanel();
+        topCard.setLayout(new BoxLayout(topCard, BoxLayout.Y_AXIS));
+
+        // ------------------ Row 1 (Search & Dates) ------------------
+        JPanel row1 = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 6));
+        row1.setOpaque(false);
+
+        JLabel lblType = new JLabel("Room Type:");
+        lblType.setFont(UIStyle.FONT_BOLD);
+        lblType.setForeground(UIStyle.COLOR_TEXT_MAIN);
+        row1.add(lblType);
+
         cbRoomTypeFilter = new JComboBox<>(new String[]{"All", "Standard", "Deluxe", "Suite"});
         cbRoomTypeFilter.setFont(UIStyle.FONT_REGULAR);
+        cbRoomTypeFilter.setPreferredSize(new Dimension(110, 36));
         cbRoomTypeFilter.addActionListener(e -> refreshRooms());
-        filterPanel.add(cbRoomTypeFilter);
+        row1.add(cbRoomTypeFilter);
 
-        JButton refreshBtn = UIStyle.createSecondaryButton("Refresh");
-        refreshBtn.addActionListener(e -> refreshRooms());
-        filterPanel.add(refreshBtn);
+        row1.add(Box.createHorizontalStrut(8));
 
-        topBar.add(filterPanel, BorderLayout.EAST);
-        panel.add(topBar, BorderLayout.NORTH);
+        JLabel lblCheckIn = new JLabel("Check-In Date:");
+        lblCheckIn.setFont(UIStyle.FONT_BOLD);
+        lblCheckIn.setForeground(UIStyle.COLOR_TEXT_MAIN);
+        row1.add(lblCheckIn);
 
-        // Center Table
-        String[] columns = {"Room No", "Room Type", "Price / Night", "Status", "Description"};
+        tfCheckIn = UIStyle.createTextField(9);
+        tfCheckIn.setEditable(false);
+        tfCheckIn.setText(LocalDate.now().toString());
+        tfCheckIn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        tfCheckIn.setToolTipText("Click to choose Check-In date");
+        tfCheckIn.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                openCheckInCalendar();
+            }
+        });
+        row1.add(tfCheckIn);
+
+        JButton btnCheckInCal = UIStyle.createSecondaryButton("📅 Select Check-In");
+        btnCheckInCal.addActionListener(e -> openCheckInCalendar());
+        row1.add(btnCheckInCal);
+
+        row1.add(Box.createHorizontalStrut(8));
+
+        JLabel lblCheckOut = new JLabel("Check-Out Date:");
+        lblCheckOut.setFont(UIStyle.FONT_BOLD);
+        lblCheckOut.setForeground(UIStyle.COLOR_TEXT_MAIN);
+        row1.add(lblCheckOut);
+
+        tfCheckOut = UIStyle.createTextField(9);
+        tfCheckOut.setEditable(false);
+        tfCheckOut.setText(LocalDate.now().plusDays(1).toString());
+        tfCheckOut.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        tfCheckOut.setToolTipText("Click to choose Check-Out date");
+        tfCheckOut.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                openCheckOutCalendar();
+            }
+        });
+        row1.add(tfCheckOut);
+
+        JButton btnCheckOutCal = UIStyle.createSecondaryButton("📅 Select Check-Out");
+        btnCheckOutCal.addActionListener(e -> openCheckOutCalendar());
+        row1.add(btnCheckOutCal);
+
+        row1.add(Box.createHorizontalStrut(8));
+
+        JButton btnCheckAvail = UIStyle.createPrimaryButton("Check Availability / Refresh");
+        btnCheckAvail.addActionListener(e -> refreshRooms());
+        row1.add(btnCheckAvail);
+
+        topCard.add(row1);
+
+        // ------------------ Row 2 (Selected Room & Action) ------------------
+        JPanel row2 = new JPanel(new BorderLayout(10, 0));
+        row2.setOpaque(false);
+        row2.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(1, 0, 0, 0, UIStyle.COLOR_BORDER),
+                new EmptyBorder(8, 4, 4, 4)
+        ));
+
+        // Row 2 Left
+        JPanel row2Left = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 4));
+        row2Left.setOpaque(false);
+
+        JLabel lblSelected = new JLabel("Selected Room No:");
+        lblSelected.setFont(UIStyle.FONT_BOLD);
+        lblSelected.setForeground(UIStyle.COLOR_TEXT_MAIN);
+        row2Left.add(lblSelected);
+
+        tfSelectedRoom = UIStyle.createTextField(6);
+        tfSelectedRoom.setEditable(false);
+        tfSelectedRoom.setHorizontalAlignment(JTextField.CENTER);
+        tfSelectedRoom.setFont(UIStyle.FONT_BOLD);
+        tfSelectedRoom.setForeground(UIStyle.COLOR_ACCENT);
+        tfSelectedRoom.setText("-");
+        row2Left.add(tfSelectedRoom);
+
+        lblAvailabilityNotice = new JLabel("Select a room from the table below to check details");
+        lblAvailabilityNotice.setFont(UIStyle.FONT_BOLD);
+        lblAvailabilityNotice.setForeground(UIStyle.COLOR_TEXT_MUTED);
+        row2Left.add(lblAvailabilityNotice);
+
+        row2.add(row2Left, BorderLayout.CENTER);
+
+        // Row 2 Right
+        JPanel row2Right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 4));
+        row2Right.setOpaque(false);
+
+        lblEstimatedTotal = new JLabel("Est. Total: ₹0.00");
+        lblEstimatedTotal.setFont(UIStyle.FONT_BOLD);
+        lblEstimatedTotal.setForeground(UIStyle.COLOR_ACCENT);
+        row2Right.add(lblEstimatedTotal);
+
+        JButton btnBook = UIStyle.createPrimaryButton("Book & Proceed to Payment");
+        btnBook.addActionListener(e -> handleBookRoom());
+        row2Right.add(btnBook);
+
+        row2.add(row2Right, BorderLayout.EAST);
+
+        topCard.add(row2);
+        topContainer.add(topCard);
+
+        panel.add(topContainer, BorderLayout.NORTH);
+
+        // Center: Rooms Table
+        String[] columns = {"Room No", "Room Type", "Price / Night (₹)", "Status for Selected Dates", "Upcoming Schedule / Availability Info", "Description"};
         roomTableModel = new DefaultTableModel(columns, 0) {
             @Override
             public boolean isCellEditable(int row, int col) {
@@ -240,90 +364,170 @@ public class CustomerDashboardPanel extends JPanel {
         roomTable.getColumnModel().getColumn(3).setCellRenderer(UIStyle.createStatusBadgeRenderer());
         roomTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
+        // Column sizing for clear readability
+        roomTable.getColumnModel().getColumn(0).setPreferredWidth(80);
+        roomTable.getColumnModel().getColumn(1).setPreferredWidth(100);
+        roomTable.getColumnModel().getColumn(2).setPreferredWidth(120);
+        roomTable.getColumnModel().getColumn(3).setPreferredWidth(210);
+        roomTable.getColumnModel().getColumn(4).setPreferredWidth(380);
+        roomTable.getColumnModel().getColumn(5).setPreferredWidth(200);
+
         roomTable.getSelectionModel().addListSelectionListener(e -> {
-            int selectedRow = roomTable.getSelectedRow();
-            if (selectedRow >= 0) {
-                int roomNo = (Integer) roomTableModel.getValueAt(selectedRow, 0);
-                tfSelectedRoom.setText(String.valueOf(roomNo));
-                updateEstimatedTotal();
+            if (!e.getValueIsAdjusting()) {
+                int selectedRow = roomTable.getSelectedRow();
+                if (selectedRow >= 0) {
+                    Object val = roomTableModel.getValueAt(selectedRow, 0);
+                    tfSelectedRoom.setText(String.valueOf(val));
+                    updateEstimatedTotalAndNotice();
+                }
             }
         });
 
         panel.add(new JScrollPane(roomTable), BorderLayout.CENTER);
 
-        // Bottom Booking Card Panel
-        JPanel bookingCard = UIStyle.createCardPanel();
-        bookingCard.setLayout(new GridBagLayout());
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(6, 8, 6, 8);
-        gbc.anchor = GridBagConstraints.WEST;
-
-        gbc.gridx = 0; gbc.gridy = 0;
-        bookingCard.add(new JLabel("Selected Room:"), gbc);
-        gbc.gridx = 1;
-        tfSelectedRoom = UIStyle.createTextField(6);
-        tfSelectedRoom.setEditable(false);
-        bookingCard.add(tfSelectedRoom, gbc);
-
-        gbc.gridx = 2;
-        bookingCard.add(new JLabel("Check-In (YYYY-MM-DD):"), gbc);
-        gbc.gridx = 3;
-        tfCheckIn = UIStyle.createTextField(10);
-        tfCheckIn.setText(LocalDate.now().plusDays(1).toString());
-        tfCheckIn.addKeyListener(new java.awt.event.KeyAdapter() {
-            @Override
-            public void keyReleased(java.awt.event.KeyEvent e) { updateEstimatedTotal(); }
-        });
-        bookingCard.add(tfCheckIn, gbc);
-
-        gbc.gridx = 4;
-        bookingCard.add(new JLabel("Check-Out (YYYY-MM-DD):"), gbc);
-        gbc.gridx = 5;
-        tfCheckOut = UIStyle.createTextField(10);
-        tfCheckOut.setText(LocalDate.now().plusDays(3).toString());
-        tfCheckOut.addKeyListener(new java.awt.event.KeyAdapter() {
-            @Override
-            public void keyReleased(java.awt.event.KeyEvent e) { updateEstimatedTotal(); }
-        });
-        bookingCard.add(tfCheckOut, gbc);
-
-        gbc.gridx = 6;
-        lblEstimatedTotal = new JLabel("Est. Total: $0.00");
-        lblEstimatedTotal.setFont(UIStyle.FONT_BOLD);
-        lblEstimatedTotal.setForeground(UIStyle.COLOR_ACCENT);
-        bookingCard.add(lblEstimatedTotal, gbc);
-
-        gbc.gridx = 7;
-        JButton btnBook = UIStyle.createPrimaryButton("Book & Proceed to Payment");
-        btnBook.addActionListener(e -> handleBookRoom());
-        bookingCard.add(btnBook, gbc);
-
-        panel.add(bookingCard, BorderLayout.SOUTH);
-
+        // No form at the bottom (BorderLayout.SOUTH is removed)
         return panel;
     }
 
-    private void updateEstimatedTotal() {
+    private void openCheckInCalendar() {
+        LocalDate currentIn = parseDate(tfCheckIn.getText().trim(), LocalDate.now());
+        List<Reservation> activeReservations = getActiveReservationsForSelectedRoom();
+
+        Window parentWindow = SwingUtilities.getWindowAncestor(this);
+        LocalDate picked = CalendarPickerDialog.showDialog(parentWindow,
+                "Select Check-In Date",
+                currentIn,
+                LocalDate.now(),
+                false,
+                activeReservations);
+
+        if (picked != null) {
+            tfCheckIn.setText(picked.toString());
+            LocalDate currentOut = parseDate(tfCheckOut.getText().trim(), picked.plusDays(1));
+            if (!currentOut.isAfter(picked)) {
+                tfCheckOut.setText(picked.plusDays(1).toString());
+            }
+            refreshRooms();
+            updateEstimatedTotalAndNotice();
+        }
+    }
+
+    private void openCheckOutCalendar() {
+        LocalDate currentIn = parseDate(tfCheckIn.getText().trim(), LocalDate.now());
+        LocalDate minCheckOut = currentIn.plusDays(1);
+        LocalDate currentOut = parseDate(tfCheckOut.getText().trim(), minCheckOut);
+        if (currentOut.isBefore(minCheckOut)) {
+            currentOut = minCheckOut;
+        }
+
+        List<Reservation> activeReservations = getActiveReservationsForSelectedRoom();
+
+        Window parentWindow = SwingUtilities.getWindowAncestor(this);
+        LocalDate picked = CalendarPickerDialog.showDialog(parentWindow,
+                "Select Check-Out Date",
+                currentOut,
+                minCheckOut,
+                true,
+                activeReservations);
+
+        if (picked != null) {
+            tfCheckOut.setText(picked.toString());
+            refreshRooms();
+            updateEstimatedTotalAndNotice();
+        }
+    }
+
+    private List<Reservation> getActiveReservationsForSelectedRoom() {
+        String roomStr = tfSelectedRoom.getText().trim();
+        if (!roomStr.isEmpty() && !roomStr.equals("-")) {
+            try {
+                int roomNo = Integer.parseInt(roomStr);
+                return resService.getReservationRepository().findActiveReservationsByRoomId(roomNo);
+            } catch (Exception ignored) {}
+        }
+        return new ArrayList<>();
+    }
+
+    private LocalDate parseDate(String text, LocalDate fallback) {
+        try {
+            return LocalDate.parse(text);
+        } catch (Exception e) {
+            return fallback;
+        }
+    }
+
+    private void updateEstimatedTotalAndNotice() {
         try {
             int selectedRow = roomTable.getSelectedRow();
             if (selectedRow < 0) {
-                lblEstimatedTotal.setText("Est. Total: $0.00");
+                lblEstimatedTotal.setText("Est. Total: ₹0.00");
+                lblAvailabilityNotice.setText("Select a room from the table below to check details");
+                lblAvailabilityNotice.setForeground(UIStyle.COLOR_TEXT_MUTED);
                 return;
             }
-            String priceStr = String.valueOf(roomTableModel.getValueAt(selectedRow, 2)).replace("$", "").trim();
+
+            int roomNo = (Integer) roomTableModel.getValueAt(selectedRow, 0);
+            String priceStr = String.valueOf(roomTableModel.getValueAt(selectedRow, 2)).replace("₹", "").replace("$", "").trim();
             double price = Double.parseDouble(priceStr);
 
-            LocalDate in = LocalDate.parse(tfCheckIn.getText().trim());
-            LocalDate out = LocalDate.parse(tfCheckOut.getText().trim());
+            LocalDate in = parseDate(tfCheckIn.getText().trim(), LocalDate.now());
+            LocalDate out = parseDate(tfCheckOut.getText().trim(), in.plusDays(1));
+
             long nights = ChronoUnit.DAYS.between(in, out);
             if (nights <= 0) {
                 lblEstimatedTotal.setText("Invalid Dates");
-            } else {
-                double total = nights * price;
-                lblEstimatedTotal.setText(String.format("Est. Total: $%.2f (%d nights)", total, nights));
+                lblAvailabilityNotice.setText("Check-Out date must be after Check-In date.");
+                lblAvailabilityNotice.setForeground(UIStyle.COLOR_DANGER);
+                return;
             }
+
+            double total = nights * price;
+            lblEstimatedTotal.setText(String.format("Est. Total: ₹%.2f (%d night%s)", total, nights, nights > 1 ? "s" : ""));
+
+            Room room = roomService.findRoom(roomNo);
+            if (room != null && "Maintenance".equalsIgnoreCase(room.getStatus())) {
+                lblAvailabilityNotice.setText("✖ Room #" + roomNo + " is currently under maintenance.");
+                lblAvailabilityNotice.setForeground(UIStyle.COLOR_WARNING);
+                return;
+            }
+
+            // Check reservations for this room
+            List<Reservation> activeList = resService.getReservationRepository().findActiveReservationsByRoomId(roomNo);
+            Reservation conflictingRes = null;
+            Reservation nextFutureRes = null;
+
+            for (Reservation res : activeList) {
+                LocalDate rIn = res.getCheckInDate();
+                LocalDate rOut = res.getCheckOutDate();
+                if (rIn == null || rOut == null) continue;
+
+                // Overlap check
+                if (in.isBefore(rOut) && out.isAfter(rIn)) {
+                    conflictingRes = res;
+                    break;
+                }
+
+                // Future reservation after customer's check-in
+                if (rIn.isAfter(in) || rIn.isEqual(out)) {
+                    if (nextFutureRes == null || rIn.isBefore(nextFutureRes.getCheckInDate())) {
+                        nextFutureRes = res;
+                    }
+                }
+            }
+
+            if (conflictingRes != null) {
+                lblAvailabilityNotice.setText("✖ Room #" + roomNo + " is already reserved from " + conflictingRes.getCheckInDate() + " to " + conflictingRes.getCheckOutDate() + "!");
+                lblAvailabilityNotice.setForeground(UIStyle.COLOR_DANGER);
+            } else if (nextFutureRes != null) {
+                lblAvailabilityNotice.setText("✔ Available for your stay! Note: Another guest arrives on " + nextFutureRes.getCheckInDate() + ", so checkout must be on or before " + nextFutureRes.getCheckInDate() + ".");
+                lblAvailabilityNotice.setForeground(UIStyle.COLOR_SUCCESS);
+            } else {
+                lblAvailabilityNotice.setText("✔ Room #" + roomNo + " is fully available for your selected dates!");
+                lblAvailabilityNotice.setForeground(UIStyle.COLOR_SUCCESS);
+            }
+
         } catch (Exception e) {
-            lblEstimatedTotal.setText("Est. Total: $0.00");
+            lblEstimatedTotal.setText("Est. Total: ₹0.00");
         }
     }
 
@@ -334,14 +538,14 @@ public class CustomerDashboardPanel extends JPanel {
         }
 
         String roomStr = tfSelectedRoom.getText().trim();
-        if (roomStr.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Please select a room from the table above.", "Room Selection", JOptionPane.WARNING_MESSAGE);
+        if (roomStr.isEmpty() || roomStr.equals("-")) {
+            JOptionPane.showMessageDialog(this, "Please select a room from the table.", "Room Selection", JOptionPane.WARNING_MESSAGE);
             return;
         }
         int roomNo = Integer.parseInt(roomStr);
         Room room = roomService.findRoom(roomNo);
-        if (room == null || !room.checkAvailability()) {
-            JOptionPane.showMessageDialog(this, "Room " + roomNo + " is no longer available for booking.", "Unavailable", JOptionPane.ERROR_MESSAGE);
+        if (room == null || "Maintenance".equalsIgnoreCase(room.getStatus())) {
+            JOptionPane.showMessageDialog(this, "Room " + roomNo + " is currently under maintenance.", "Unavailable", JOptionPane.ERROR_MESSAGE);
             refreshRooms();
             return;
         }
@@ -352,7 +556,12 @@ public class CustomerDashboardPanel extends JPanel {
             checkIn = LocalDate.parse(tfCheckIn.getText().trim());
             checkOut = LocalDate.parse(tfCheckOut.getText().trim());
         } catch (Exception e) {
-            JOptionPane.showMessageDialog(this, "Invalid date format. Please use YYYY-MM-DD.", "Date Error", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Invalid date format. Please select dates using the calendar.", "Date Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        if (checkIn.isBefore(LocalDate.now())) {
+            JOptionPane.showMessageDialog(this, "Check-in date cannot be in the past.", "Date Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
 
@@ -361,24 +570,132 @@ public class CustomerDashboardPanel extends JPanel {
             return;
         }
 
-        // Create the reservation in pending status
-        Reservation res = ReservationService.createReservation(currentCustomer, room, checkIn, checkOut);
-        if (res == null) {
-            JOptionPane.showMessageDialog(this, "Failed to create reservation.", "Error", JOptionPane.ERROR_MESSAGE);
-            return;
-        }
+        try {
+            Reservation res = ReservationService.createReservation(currentCustomer, room, checkIn, checkOut);
+            if (res == null) {
+                JOptionPane.showMessageDialog(this, "Failed to create reservation.", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
 
-        // Open Payment and Itemized Bill Dialog
-        Window parentWindow = SwingUtilities.getWindowAncestor(this);
-        PaymentDialog dialog = new PaymentDialog(parentWindow, res, () -> {
-            refreshRooms();
-            refreshBookings();
-            contentCardLayout.show(contentCards, "BOOKINGS");
-        });
-        dialog.setVisible(true);
+            Window parentWindow = SwingUtilities.getWindowAncestor(this);
+            PaymentDialog dialog = new PaymentDialog(parentWindow, res, () -> {
+                refreshRooms();
+                refreshBookings();
+                contentCardLayout.show(contentCards, "BOOKINGS");
+            });
+            dialog.setVisible(true);
+
+        } catch (IllegalArgumentException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Room Unavailable", JOptionPane.WARNING_MESSAGE);
+        }
     }
 
-    // --- View 2: My Bookings & Receipts ---
+    public void refreshRooms() {
+        int previousSelectedRoom = -1;
+        try {
+            String sel = tfSelectedRoom != null ? tfSelectedRoom.getText().trim() : "";
+            if (!sel.isEmpty() && !sel.equals("-")) {
+                previousSelectedRoom = Integer.parseInt(sel);
+            }
+        } catch (Exception ignored) {}
+
+        roomTableModel.setRowCount(0);
+        String typeFilter = cbRoomTypeFilter != null ? (String) cbRoomTypeFilter.getSelectedItem() : "All";
+        List<Room> rooms;
+        if (typeFilter == null || "All".equalsIgnoreCase(typeFilter)) {
+            rooms = roomService.listAllRooms();
+        } else {
+            rooms = roomService.getRoomRepository().findByType(typeFilter);
+        }
+
+        LocalDate checkIn = parseDate(tfCheckIn != null ? tfCheckIn.getText().trim() : "", LocalDate.now());
+        LocalDate checkOut = parseDate(tfCheckOut != null ? tfCheckOut.getText().trim() : "", checkIn.plusDays(1));
+        if (!checkOut.isAfter(checkIn)) {
+            checkOut = checkIn.plusDays(1);
+        }
+
+        LocalDate today = LocalDate.now();
+
+        int rowToSelect = -1;
+        int rowIndex = 0;
+
+        for (Room r : rooms) {
+            int rNo = r.getRoomNo();
+            String rType = r.getRoomType();
+            double price = r.getPrice();
+            String desc = r.getDescription();
+
+            String statusForDates;
+            String scheduleInfo;
+
+            if ("Maintenance".equalsIgnoreCase(r.getStatus())) {
+                statusForDates = "MAINTENANCE";
+                scheduleInfo = "Under Maintenance";
+            } else {
+                List<Reservation> activeReservations = resService.getReservationRepository().findActiveReservationsByRoomId(rNo);
+
+                // Overlap check
+                Reservation conflictingRes = null;
+                Reservation nextFutureRes = null;
+
+                for (Reservation res : activeReservations) {
+                    LocalDate rIn = res.getCheckInDate();
+                    LocalDate rOut = res.getCheckOutDate();
+                    if (rIn == null || rOut == null) continue;
+
+                    // Overlap formula: checkIn < rOut && checkOut > rIn
+                    if (checkIn.isBefore(rOut) && checkOut.isAfter(rIn)) {
+                        conflictingRes = res;
+                        break;
+                    }
+
+                    // Find nearest upcoming future reservation after or on check-in
+                    if (rIn.isAfter(checkIn) || rIn.isEqual(checkOut) || !rIn.isBefore(today)) {
+                        if (nextFutureRes == null || rIn.isBefore(nextFutureRes.getCheckInDate())) {
+                            nextFutureRes = res;
+                        }
+                    }
+                }
+
+                if (conflictingRes != null) {
+                    // Case 3 — Customer's selected dates overlap with an existing reservation
+                    statusForDates = "BOOKED FOR SELECTED DATES";
+                    scheduleInfo = "Reserved: " + conflictingRes.getCheckInDate() + " to " + conflictingRes.getCheckOutDate() +
+                                   " (Available before " + conflictingRes.getCheckInDate() + " or after " + conflictingRes.getCheckOutDate() + ")";
+                } else if (nextFutureRes != null) {
+                    // Case 2 — Room has a future reservation, and Customer's selected dates do NOT overlap
+                    statusForDates = "AVAILABLE (Until " + nextFutureRes.getCheckInDate() + ")";
+                    scheduleInfo = "Free now until " + nextFutureRes.getCheckInDate() + " | Next Booking: " +
+                                   nextFutureRes.getCheckInDate() + " to " + nextFutureRes.getCheckOutDate();
+                } else {
+                    // Case 1 — Room has NO active reservations
+                    statusForDates = "AVAILABLE";
+                    scheduleInfo = "Open — Available for all dates";
+                }
+            }
+
+            roomTableModel.addRow(new Object[]{
+                    rNo,
+                    rType,
+                    String.format("₹%.2f", price),
+                    statusForDates,
+                    scheduleInfo,
+                    desc
+            });
+
+            if (rNo == previousSelectedRoom) {
+                rowToSelect = rowIndex;
+            }
+            rowIndex++;
+        }
+
+        if (rowToSelect >= 0 && rowToSelect < roomTable.getRowCount()) {
+            roomTable.setRowSelectionInterval(rowToSelect, rowToSelect);
+        }
+
+        updateEstimatedTotalAndNotice();
+    }
+
     private JPanel buildBookingsView() {
         JPanel panel = new JPanel(new BorderLayout(16, 16));
         panel.setOpaque(false);
@@ -412,7 +729,6 @@ public class CustomerDashboardPanel extends JPanel {
 
         panel.add(new JScrollPane(bookingsTable), BorderLayout.CENTER);
 
-        // Actions footer
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 12));
         actions.setOpaque(false);
 
@@ -502,27 +818,6 @@ public class CustomerDashboardPanel extends JPanel {
         }
     }
 
-    public void refreshRooms() {
-        roomTableModel.setRowCount(0);
-        String typeFilter = cbRoomTypeFilter != null ? (String) cbRoomTypeFilter.getSelectedItem() : "All";
-        List<Room> rooms;
-        if (typeFilter == null || "All".equalsIgnoreCase(typeFilter)) {
-            rooms = roomService.listAllRooms();
-        } else {
-            rooms = roomService.getRoomRepository().findByType(typeFilter);
-        }
-
-        for (Room r : rooms) {
-            roomTableModel.addRow(new Object[]{
-                    r.getRoomNo(),
-                    r.getRoomType(),
-                    String.format("$%.2f", r.getPrice()),
-                    r.getStatus(),
-                    r.getDescription()
-            });
-        }
-    }
-
     public void refreshBookings() {
         bookingsTableModel.setRowCount(0);
         if (currentCustomer == null) return;
@@ -544,7 +839,7 @@ public class CustomerDashboardPanel extends JPanel {
                     r.getCheckInDate(),
                     r.getCheckOutDate(),
                     nights,
-                    String.format("$%.2f", r.getTotalAmount()),
+                    String.format("₹%.2f", r.getTotalAmount()),
                     r.getStatus(),
                     payStatus
             });

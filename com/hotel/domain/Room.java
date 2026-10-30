@@ -56,7 +56,7 @@ public class Room {
     }
 
     public boolean checkAvailability() {
-        return "Available".equalsIgnoreCase(status);
+        return !"Maintenance".equalsIgnoreCase(status);
     }
 
     public void updateStatus(String status) {
