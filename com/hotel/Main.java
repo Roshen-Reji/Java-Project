@@ -1,21 +1,57 @@
 package com.hotel;
 
-import com.hotel.domain.Admin;
-import com.hotel.domain.HotelStaff;
+import com.hotel.database.DatabaseInitializer;
+import com.hotel.service.AuthenticationCustomerService;
+import com.hotel.service.PaymentService;
+import com.hotel.service.ReservationService;
 import com.hotel.service.RoomManagementService;
 import com.hotel.service.StaffService;
 import com.hotel.ui.AdminPortal;
 import com.hotel.ui.CustomerPortal;
 import com.hotel.ui.StaffPortal;
+import com.hotel.ui.swing.HotelAppFrame;
 import java.util.Scanner;
+import javax.swing.SwingUtilities;
 
 public class Main {
+
     public static void main(String[] args) {
-        seedData();
+        // Step 1: Initialize Database and Schema / Seed Data
+        DatabaseInitializer.initialize();
+
+        // Step 2: Check for --cli argument for legacy console mode
+        boolean cliMode = false;
+        if (args != null && args.length > 0) {
+            for (String arg : args) {
+                if ("--cli".equalsIgnoreCase(arg) || "-cli".equalsIgnoreCase(arg) || "cli".equalsIgnoreCase(arg)) {
+                    cliMode = true;
+                    break;
+                }
+            }
+        }
+
+        if (cliMode) {
+            runCliMenu();
+        } else {
+            // Step 3: Default — Launch modern Java Swing GUI on the Event Dispatch Thread
+            SwingUtilities.invokeLater(() -> {
+                AuthenticationCustomerService authService = new AuthenticationCustomerService();
+                RoomManagementService roomService = new RoomManagementService();
+                ReservationService resService = new ReservationService();
+                PaymentService payService = new PaymentService();
+                StaffService staffService = new StaffService();
+
+                HotelAppFrame appFrame = new HotelAppFrame(authService, roomService, resService, payService, staffService);
+                appFrame.setVisible(true);
+            });
+        }
+    }
+
+    private static void runCliMenu() {
         Scanner sc = new Scanner(System.in);
         boolean exit = false;
         while (!exit) {
-            System.out.println("\n=== Hotel Reservation System ===");
+            System.out.println("\n=== Hotel Reservation System (Console Mode) ===");
             System.out.println("1. Customer Portal");
             System.out.println("2. Staff Portal");
             System.out.println("3. Admin Portal");
@@ -41,20 +77,6 @@ public class Main {
             }
         }
         sc.close();
-    }
-
-    private static void seedData() {
-        StaffService.addStaff(new HotelStaff(1, "Alice", "Manager", "alice@hotel.com", "111-1111"));
-        StaffService.addStaff(new HotelStaff(2, "Bob", "Receptionist", "bob@hotel.com", "222-2222"));
-        StaffService.addStaff(new Admin(999, "Master Admin", "admin@hotel.com", "999-9999"));
-
-        RoomManagementService.addRoom(101, "Deluxe", 80.0, "Available", "Sea view deluxe room");
-        RoomManagementService.addRoom(102, "Standard", 50.0, "Available", "Cozy standard room");
-        RoomManagementService.addRoom(103, "Suite", 150.0, "Available", "Luxury suite with balcony");
-        RoomManagementService.addRoom(104, "Standard", 55.0, "Available", "Standard room with garden view");
-        RoomManagementService.addRoom(105, "Deluxe", 90.0, "Maintenance", "Deluxe room under maintenance");
-
-        System.out.println("Initial system data seeded: 3 Staff/Admin members and 5 Rooms ready.");
     }
 
     private static int readIntChoice(Scanner sc) {

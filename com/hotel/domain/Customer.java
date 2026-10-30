@@ -8,10 +8,25 @@ import java.util.List;
 
 public class Customer extends Person {
     private String address;
+    private String password = "";
 
     public Customer(int customerId, String name, String phone, String email, String address) {
         super(customerId, name, phone, email);
         this.address = address;
+    }
+
+    public Customer(int customerId, String name, String phone, String email, String address, String password) {
+        super(customerId, name, phone, email);
+        this.address = address;
+        this.password = password != null ? password : "";
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password != null ? password : "";
     }
 
     public int getCustomerId() {
