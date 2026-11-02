@@ -1,20 +1,111 @@
-# Build and compiler output directories
+# =========================================================================
+# Git Ignore Configuration for Java & Hotel Management System
+# =========================================================================
+
+# -------------------------------------------------------------------------
+# 1. Java Bytecode & Compiled Class Files
+# -------------------------------------------------------------------------
+*.class
+**/*.class
+*.ctxt
+
+# -------------------------------------------------------------------------
+# 2. Build & Compiler Output Directories
+# -------------------------------------------------------------------------
 out/
 bin/
-target/
 build/
+target/
+dist/
+.gradle/
 
-# Java bytecode
-*.class
+# -------------------------------------------------------------------------
+# 3. Packaging & Archives (Keep bundled dependencies in lib/)
+# -------------------------------------------------------------------------
+*.jar
+*.war
+*.ear
+*.nar
+*.zip
+*.tar.gz
+*.rar
+# Whitelist library dependencies folder
+!lib/
+!lib/*.jar
+!lib/**/*.jar
 
-# IDE / Editor configuration
+# -------------------------------------------------------------------------
+# 4. Java Virtual Machine Crash Logs & Diagnostics
+# -------------------------------------------------------------------------
+hs_err_pid*
+replay_pid*
+
+# -------------------------------------------------------------------------
+# 5. Application & Execution Logs
+# -------------------------------------------------------------------------
+*.log
+logs/
+
+# -------------------------------------------------------------------------
+# 6. Database Temporary & WAL Files
+# -------------------------------------------------------------------------
+*.db-journal
+*.db-shm
+*.db-wal
+*.sqlite-journal
+
+# -------------------------------------------------------------------------
+# 7. Runtime Generated Output (Receipts, exports, scratch files)
+# -------------------------------------------------------------------------
+Astra_Receipt_*.txt
+*.receipt
+scratch/
+
+# -------------------------------------------------------------------------
+# 8. IDE & Editor Metadata
+# -------------------------------------------------------------------------
+# IntelliJ IDEA
 .idea/
 *.iml
+*.iws
+*.ipr
+out/
+
+# Visual Studio Code
 .vscode/
-.settings/
+*.code-workspace
+
+# Eclipse
 .classpath
 .project
+.settings/
 
-# OS metadata
+# NetBeans
+nbproject/private/
+nbbuild/
+nbdist/
+.nb-gradle/
+
+# -------------------------------------------------------------------------
+# 9. Operating System Metadata
+# -------------------------------------------------------------------------
+# macOS
 .DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
 Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux / Temporary editor files
+*~
+*.swp
+*.swo
+.fuse_hidden*
+.directory
